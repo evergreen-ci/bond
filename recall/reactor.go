@@ -82,12 +82,3 @@ func DownloadReleases(releases []string, path string, edition bond.MongoDBEditio
 
 	return nil
 }
-
-func LRUPruneDownlaods() {
-	// crawl files, get: path, modtime, size for each file as well as total size for each top-level file (configurable?)
-
-	// sort based on time.
-
-	// delete file and subtract from key
-
-}
