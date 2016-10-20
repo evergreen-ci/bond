@@ -13,6 +13,8 @@ import (
 	"github.com/tychoish/grip"
 )
 
+// DownloadFileJob is an amboy.Job implementation that supports
+// downloading a a file to the local file system.
 type DownloadFileJob struct {
 	URL            string `bson:"url" json:"url" yaml:"url"`
 	Directory      string `bson:"dir" json:"dir" yaml:"dir"`
@@ -38,7 +40,10 @@ func newDownloadJob() *DownloadFileJob {
 	}
 }
 
-func NewJob(url, path string, force bool) (*DownloadFileJob, error) {
+// NewDownloadJob constructs a DownloadFileJob. The job has a
+// dependency on the downloaded file, and will only execute if that
+// file does not exist.
+func NewDownloadJob(url, path string, force bool) (*DownloadFileJob, error) {
 	j := newDownloadJob()
 	if err := j.setURL(url); err != nil {
 		return nil, errors.Wrap(err, "problem constructing Job object (url)")
@@ -57,6 +62,10 @@ func NewJob(url, path string, force bool) (*DownloadFileJob, error) {
 	return j, nil
 }
 
+// Run implements the main action of the Job. This implementation
+// checks the job directly and returns early if the downloaded file
+// exists. This behavior may be redundant in the case that the queue
+// skips jobs with "passed" jobs.
 func (j *DownloadFileJob) Run() {
 	defer j.MarkComplete()
 
@@ -72,6 +81,7 @@ func (j *DownloadFileJob) Run() {
 		err = errors.Wrapf(err, "problem downloading file %s", fn)
 		j.AddError(err)
 		grip.CatchError(err)
+		grip.CatchDebug(os.RemoveAll(fn)) // cleanup
 		return
 	}
 

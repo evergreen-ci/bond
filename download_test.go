@@ -68,7 +68,7 @@ func (s *DownloaderSuite) TestCreateDirectoryErrorsIfPathIsAFile() {
 	_, err = os.Stat(name)
 	s.False(os.IsNotExist(err))
 
-	// also check here that this error propogates to DownloadFile
+	// also check here that this error propagates to DownloadFile
 	s.Error(DownloadFile("foo", filepath.Join(name, "foo")))
 	s.Error(DownloadFile("foo", name))
 }

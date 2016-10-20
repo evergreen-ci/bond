@@ -10,6 +10,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+// DownloadReleases accesses the feed and, based on the arguments
+// provided, does the work to download the specified versions of
+// MongoDB from the downloads feed. This operation is meant to provide
+// the basis for command-line interfaces for downloading groups of
+// MongoDB versions.
 func DownloadReleases(releases []string, path string, edition bond.MongoDBEdition, arch bond.MongoDBArch, target string) error {
 	feed, err := bond.NewArtifactsFeed(path)
 	if err != nil {
@@ -31,21 +36,22 @@ func DownloadReleases(releases []string, path string, edition bond.MongoDBEditio
 	catcher := grip.NewCatcher()
 	urls, errChan := feed.GetArchives(releases, edition, arch, target)
 	for url := range urls {
-		j, err := NewJob(url, path, false)
+		j, err := NewDownloadJob(url, path, false)
 		if err != nil {
-			catcher.Add(errors.Wrap(err,
+			catcher.Add(errors.Wrapf(err,
 				"problem generating task for %s", url))
 			continue
 		}
 		if err = q.Put(j); err != nil {
-			catcher.Add(errors.Wrap(err,
+			catcher.Add(errors.Wrapf(err,
 				"problem enquing task for %s", url))
 			continue
 		}
 	}
 
 	if catcher.HasErrors() {
-		return catcher.Resolve()
+		return errors.Wrapf(catcher.Resolve(),
+			"problem adding %d download jobs to queue", catcher.Len())
 	}
 
 	for errs := range errChan {
@@ -55,7 +61,8 @@ func DownloadReleases(releases []string, path string, edition bond.MongoDBEditio
 	}
 
 	if catcher.HasErrors() {
-		return catcher.Resolve()
+		return errors.Wrapf(catcher.Resolve(),
+			"problem resolving %d download jobs", catcher.Len())
 	}
 
 	grip.Infof("waiting for '%s' download jobs to complete", q.Stats().Total)
@@ -69,8 +76,18 @@ func DownloadReleases(releases []string, path string, edition bond.MongoDBEditio
 	}
 
 	if catcher.HasErrors() {
-		return catcher.Resolve()
+		return errors.Wrapf(catcher.Resolve(),
+			"problem detected in %d download jobs", catcher.Len())
 	}
 
 	return nil
+}
+
+func LRUPruneDownlaods() {
+	// crawl files, get: path, modtime, size for each file as well as total size for each top-level file (configurable?)
+
+	// sort based on time.
+
+	// delete file and subtract from key
+
 }

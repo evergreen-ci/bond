@@ -28,6 +28,7 @@ lintArgs += --exclude="don.t use underscores.*_DependencyState.*"
 lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
 lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
+lintArgs += --exclude "error return value not checked \(defer.*"
 # end lint suppressions
 
 
