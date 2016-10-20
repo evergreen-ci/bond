@@ -55,8 +55,7 @@ $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	go get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
-t:
-	@echo $(testOutput)
+
 
 # userfacing targets for basic build and development operations
 lint:$(lintDeps)
@@ -134,6 +133,9 @@ $(buildDir)/race.$(name).out:$(testRunDeps)
 	$(vendorGopath) go test $(testArgs) -race ./ | tee $@
 # end test and coverage artifacts
 
+t:
+	@echo $(nestedVendored)
+
 
 # start vendoring configuration
 #    begin with configuration of dependencies
@@ -146,7 +148,7 @@ vendor-deps:$(vendorDeps)
 #   for go1.4, we can delete most of this.
 -include $(buildDir)/makefile.vendor
 nestedVendored := vendor/github.com/tychoish/grip
-nestedVendored := vendor/github.com/tychoish/amboy
+nestedVendored += vendor/github.com/tychoish/amboy
 nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
 $(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
 	@mkdir -p $(buildDir)
