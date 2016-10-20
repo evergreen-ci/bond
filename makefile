@@ -133,9 +133,6 @@ $(buildDir)/race.$(name).out:$(testRunDeps)
 	$(vendorGopath) go test $(testArgs) -race ./ | tee $@
 # end test and coverage artifacts
 
-t:
-	@echo $(nestedVendored)
-
 
 # start vendoring configuration
 #    begin with configuration of dependencies
@@ -167,6 +164,7 @@ change-go-version:
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
 vendor:$(buildDir)/vendor/src
 	$(MAKE) $(makeArgs) -C vendor/github.com/tychoish/grip $@
+	$(MAKE) $(makeArgs) -C vendor/github.com/tychoish/amboy $@
 $(buildDir)/vendor/src:$(buildDir)/make-vendor $(buildDir)/render-gopath
 	@./$(buildDir)/make-vendor
 #   targets to build the small programs used to support vendoring.
