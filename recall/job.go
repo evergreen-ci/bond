@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/mholt/archiver"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
@@ -78,19 +80,51 @@ func (j *DownloadFileJob) Run() {
 	}
 
 	if err := bond.DownloadFile(j.URL, fn); err != nil {
-		err = errors.Wrapf(err, "problem downloading file %s", fn)
-		j.AddError(err)
-		grip.CatchError(err)
-		grip.CatchDebug(os.RemoveAll(fn)) // cleanup
+		j.handleError(errors.Wrapf(err, "problem downloading file %s", fn))
 		return
 	}
 
 	grip.Noticef("downloaded %s file", fn)
+
+	var err error
+
+	if strings.HasSuffix(fn, ".tgz") {
+		err = archiver.TarGz.Open(fn, filepath.Dir(fn))
+	} else if strings.HasSuffix(fn, ".zip") {
+		err = archiver.Zip.Open(fn, filepath.Dir(fn))
+	} else {
+		err = errors.Errorf("file %s is in unsupported archive format", fn)
+	}
+
+	if err != nil {
+		j.handleError(errors.Wrap(err, "problem extracting artifacts"))
+		return
+	}
+
+	// update the timestamps so we playwell with the cache
+	now := time.Now()
+	if err := os.Chtimes(fn, now, now); err != nil {
+		grip.CatchWarning(err)
+	}
+
+	// hopefully directory names in archives are the same are the
+	// same as the filenames. Wnwinding the assumption will
+	// probably require a different archiver tool.
+	dirname := fn[0 : len(fn)-len(filepath.Ext(fn))]
+	if err := os.Chtimes(dirname, now, now); err != nil {
+		grip.CatchWarning(err)
+	}
 }
 
 //
 // Internal Methods
 //
+
+func (j *DownloadFileJob) handleError(err error) {
+	j.AddError(err)
+	grip.CatchError(err)
+	grip.CatchDebug(os.RemoveAll(j.getFileName())) // cleanup
+}
 
 func (j *DownloadFileJob) getFileName() string {
 	return filepath.Join(j.Directory, j.FileName)
