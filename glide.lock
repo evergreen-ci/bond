@@ -34,4 +34,6 @@ imports:
   version: daba796358cd2742b75aae05761f1b898c9f6a5c
   subpackages:
   - context
+- name: github.com/mholt/archiver
+  version: 4a8a092653655d29c8e091cf2ecf91cbe697f0de
 devImports: []
