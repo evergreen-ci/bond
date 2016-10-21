@@ -51,7 +51,7 @@ func FetchReleases(ctx context.Context, releases []string, path string, options 
 		return errors.Wrap(err, "problem populating jobs")
 	}
 
-	grip.Infof("waiting for '%s' download jobs to complete", q.Stats().Total)
+	grip.Infof("waiting for %d download jobs to complete", q.Stats().Total)
 	q.Wait()
 	grip.Info("all download tasks complete, processing errors now")
 

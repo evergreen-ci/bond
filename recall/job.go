@@ -1,6 +1,7 @@
 package recall
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
@@ -55,10 +57,15 @@ func NewDownloadJob(url, path string, force bool) (*DownloadFileJob, error) {
 		return nil, errors.Wrap(err, "problem constructing Job object (directory)")
 	}
 
+	fn := j.getFileName()
+	j.SetID(fmt.Sprintf("%s-%d",
+		strings.Replace(fn, string(filepath.Separator), "-", -1),
+		job.GetNumber()))
+
 	if force {
 		j.SetDependency(dependency.NewAlways())
 	} else {
-		j.SetDependency(dependency.NewCreatesFile(j.getFileName()))
+		j.SetDependency(dependency.NewCreatesFile(fn))
 	}
 
 	return j, nil

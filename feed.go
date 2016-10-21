@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -151,7 +152,22 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 		return "", errors.Wrapf(err, "problem fetching download information for series '%s'", series)
 	}
 
-	return strings.Replace(dl.Archive.Url, series+".0", series+"-latest", -1), nil
+	// if it's a dev version: then the branch name is in the file
+	// name, and we just take the latest from master
+	seriesNum, err := strconv.Atoi(string(series[2]))
+	if err != nil {
+		// this should be unreachable, because invalid
+		// versions won't have yielded results from the feed
+		// op
+		return "", errors.Wrapf(err, "version specification is invalid")
+	}
+
+	if seriesNum%2 == 1 {
+		return strings.Replace(dl.Archive.Url, version.Version, "latest", -1), nil
+	}
+
+	// if it's a stable version we just replace the version with the word latest.
+	return strings.Replace(dl.Archive.Url, version.Version, "v"+series+"-latest", -1), nil
 }
 
 func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) (<-chan string, <-chan error) {
