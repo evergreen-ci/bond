@@ -10,4 +10,4 @@ go:
   - 1.4
   - 1.6
   - 1.7
-script: make test
+script: make vendor test
