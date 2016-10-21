@@ -3,6 +3,7 @@ package recall
 import (
 	"runtime"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
@@ -15,70 +16,86 @@ import (
 // MongoDB from the downloads feed. This operation is meant to provide
 // the basis for command-line interfaces for downloading groups of
 // MongoDB versions.
-func DownloadReleases(releases []string, path string, edition bond.MongoDBEdition, arch bond.MongoDBArch, target string) error {
-	feed, err := bond.NewArtifactsFeed(path)
-	if err != nil {
-		return errors.Wrap(err, "problem building feed")
-	}
+func DownloadReleases(releases []string, path string, options bond.BuildOptions) error {
+	return FetchReleases(context.Background(), releases, path, options)
+}
 
-	if err := feed.Populate(); err != nil {
-		return errors.Wrap(err, "problem getting feed data")
-	}
-
-	ctx, cancel := context.WithCancel(context.TODO())
+// FetchReleases has the same behavior as DownloadReleases, but takes
+// a Context to facilitate caller implemented timeouts and cancelation.
+func FetchReleases(ctx context.Context, releases []string, path string, options bond.BuildOptions) error {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if err := options.Validate(); err != nil {
+		return errors.Wrap(err, "invalid build options")
+	}
+
+	feed, err := bond.GetArtifactsFeed(path)
+	if err != nil {
+		return errors.Wrap(err, "problem generating data feed")
+	}
 
 	q := queue.NewLocalUnordered(runtime.NumCPU())
 	if err := q.Start(ctx); err != nil {
 		return errors.Wrap(err, "problem starting queue")
 	}
 
-	catcher := grip.NewCatcher()
-	urls, errChan := feed.GetArchives(releases, edition, arch, target)
-	for url := range urls {
-		j, err := NewDownloadJob(url, path, false)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err,
-				"problem generating task for %s", url))
-			continue
-		}
-		if err = q.Put(j); err != nil {
-			catcher.Add(errors.Wrapf(err,
-				"problem enquing task for %s", url))
-			continue
-		}
+	urls, errGroupOne := feed.GetArchives(releases, options)
+	jobs, errGroupTwo := createJobs(path, urls)
+
+	if err := amboy.PopulateQueue(ctx, q, jobs); err != nil {
+		return errors.Wrap(err, "problem adding jobs to queue")
 	}
 
-	if catcher.HasErrors() {
-		return errors.Wrapf(catcher.Resolve(),
-			"problem adding %d download jobs to queue", catcher.Len())
-	}
-
-	for errs := range errChan {
-		for _, err := range errs {
-			catcher.Add(err)
-		}
-	}
-
-	if catcher.HasErrors() {
-		return errors.Wrapf(catcher.Resolve(),
-			"problem resolving %d download jobs", catcher.Len())
+	if err := aggregateErrors(errGroupOne, errGroupTwo); err != nil {
+		return errors.Wrap(err, "problem populating jobs")
 	}
 
 	grip.Infof("waiting for '%s' download jobs to complete", q.Stats().Total)
 	q.Wait()
 	grip.Info("all download tasks complete, processing errors now")
 
-	for result := range q.Results() {
-		if err := result.Error(); err != nil {
+	if err := amboy.ResolveErrors(ctx, q); err != nil {
+		return errors.Wrap(err, "problem(s) detected in download jobs")
+	}
+
+	return nil
+}
+
+func createJobs(path string, urls <-chan string) (<-chan amboy.Job, <-chan error) {
+	output := make(chan amboy.Job)
+	errOut := make(chan error)
+
+	go func() {
+		catcher := grip.NewCatcher()
+		for url := range urls {
+			j, err := NewDownloadJob(url, path, false)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err,
+					"problem generating task for %s", url))
+				continue
+			}
+
+			output <- j
+		}
+		close(output)
+		if catcher.HasErrors() {
+			errOut <- catcher.Resolve()
+		}
+		close(errOut)
+	}()
+
+	return output, errOut
+}
+
+func aggregateErrors(groups ...<-chan error) error {
+	catcher := grip.NewCatcher()
+
+	for _, g := range groups {
+		for err := range g {
 			catcher.Add(err)
 		}
 	}
 
-	if catcher.HasErrors() {
-		return errors.Wrapf(catcher.Resolve(),
-			"problem detected in %d download jobs", catcher.Len())
-	}
-
-	return nil
+	return catcher.Resolve()
 }

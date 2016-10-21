@@ -28,6 +28,10 @@ func createDirectory(path string) error {
 	return nil
 }
 
+// CacheDownload downloads a resource (url) into a file (path); if the
+// file already exists CaceheDownlod does not download a new copy of
+// the file, unless local file is older than the ttl, or the force
+// option is specified. CacheDownload returns the contents of the file.
 func CacheDownload(ttl time.Duration, url, path string, force bool) ([]byte, error) {
 	if ttl == 0 {
 		force = true
@@ -44,6 +48,9 @@ func CacheDownload(ttl time.Duration, url, path string, force bool) ([]byte, err
 		}
 	}
 
+	// TODO: we're effectively reading the file into memory twice
+	// to write it to disk and read it out again.
+
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := DownloadFile(url, path)
 		if err != nil {
@@ -59,6 +66,8 @@ func CacheDownload(ttl time.Duration, url, path string, force bool) ([]byte, err
 	return data, nil
 }
 
+// DownloadFile downloads a resource (url) into a file specified by
+// fileName. Also creates enclosing directories as needed.
 func DownloadFile(url, fileName string) error {
 	if err := createDirectory(filepath.Dir(fileName)); err != nil {
 		return errors.Wrapf(err, "problem creating enclosing directory for %s", fileName)

@@ -83,12 +83,11 @@ func (j *DownloadFileJob) Run() {
 		j.handleError(errors.Wrapf(err, "problem downloading file %s", fn))
 		return
 	}
-
 	grip.Noticef("downloaded %s file", fn)
 
 	var err error
-
 	if strings.HasSuffix(fn, ".tgz") {
+		// there is no tar.gz because we renamed it in setURL()
 		err = archiver.TarGz.Open(fn, filepath.Dir(fn))
 	} else if strings.HasSuffix(fn, ".zip") {
 		err = archiver.Zip.Open(fn, filepath.Dir(fn))
@@ -101,7 +100,9 @@ func (j *DownloadFileJob) Run() {
 		return
 	}
 
-	// update the timestamps so we playwell with the cache
+	// update the timestamps so we playwell with the cache. These
+	// operations are logged but don't impact the tasks error
+	// state if they fail.
 	now := time.Now()
 	if err := os.Chtimes(fn, now, now); err != nil {
 		grip.CatchWarning(err)
@@ -143,10 +144,17 @@ func (j *DownloadFileJob) setDirectory(path string) error {
 }
 
 func (j *DownloadFileJob) setURL(url string) error {
-	if strings.HasPrefix(url, "http") {
-		j.URL = url
-		j.FileName = filepath.Base(url)
+	if !strings.HasPrefix(url, "http") {
+		return errors.Errorf("%s is not a valid url", url)
 	}
 
-	return errors.Errorf("%s is not a valid url", url)
+	j.URL = url
+
+	j.FileName = filepath.Base(url)
+
+	if strings.HasSuffix(url, ".tar.gz") {
+		j.FileName = filepath.Ext(filepath.Ext(j.FileName)) + ".tgz"
+	}
+
+	return nil
 }

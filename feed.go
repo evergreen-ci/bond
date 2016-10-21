@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tychoish/grip"
 )
 
 type ArtifactsFeed struct {
@@ -34,7 +35,28 @@ type ArtifactDownload struct {
 	Packages []string
 }
 
+func (dl ArtifactDownload) GetBuildOptions() BuildOptions {
+	return BuildOptions{
+		Target:  dl.Target,
+		Arch:    dl.Arch,
+		Edition: dl.Edition,
+	}
+}
+
 const day = time.Hour * 24
+
+func GetArtifactsFeed(path string) (*ArtifactsFeed, error) {
+	feed, err := NewArtifactsFeed(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building feed")
+	}
+
+	if err := feed.Populate(day * 2); err != nil {
+		return nil, errors.Wrap(err, "problem getting feed data")
+	}
+
+	return feed, nil
+}
 
 func NewArtifactsFeed(path string) (*ArtifactsFeed, error) {
 	f := &ArtifactsFeed{
@@ -69,8 +91,8 @@ func NewArtifactsFeed(path string) (*ArtifactsFeed, error) {
 	return f, nil
 }
 
-func (feed *ArtifactsFeed) Populate() error {
-	data, err := CacheDownload(day*2, "http://downloads.mongodb.org/full.json", feed.path, false)
+func (feed *ArtifactsFeed) Populate(ttl time.Duration) error {
+	data, err := CacheDownload(ttl, "http://downloads.mongodb.org/full.json", feed.path, false)
 
 	if err != nil {
 		return errors.Wrap(err, "problem getting feed data")
@@ -114,7 +136,7 @@ func (feed *ArtifactsFeed) GetVersion(release string) (*ArtifactVersion, bool) {
 	return version, ok
 }
 
-func (feed *ArtifactsFeed) GetLatestArchive(series string, edition MongoDBEdition, arch MongoDBArch, target string) (string, error) {
+func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions) (string, error) {
 	if len(series) != 3 || string(series[1]) != "." {
 		return "", errors.Errorf("series '%s' is not a valid version series", series)
 	}
@@ -124,7 +146,7 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, edition MongoDBEditio
 		return "", errors.Errorf("there is no .0 release for series '%s' in the feed", series)
 	}
 
-	dl, err := version.GetDownload(edition, arch, target)
+	dl, err := version.GetDownload(options)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem fetching download information for series '%s'", series)
 	}
@@ -132,18 +154,18 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, edition MongoDBEditio
 	return strings.Replace(dl.Archive.Url, series+".0", series+"-latest", -1), nil
 }
 
-func (feed *ArtifactsFeed) GetArchives(releases []string, edition MongoDBEdition, arch MongoDBArch, target string) (<-chan string, <-chan []error) {
+func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) (<-chan string, <-chan error) {
 	output := make(chan string)
-	errReturn := make(chan []error)
+	errOut := make(chan error)
 
 	go func() {
-		var errs []error
+		catcher := grip.NewCatcher()
 		for _, rel := range releases {
 			// this is a series, have to handle it differently
 			if len(rel) == 3 {
-				url, err := feed.GetLatestArchive(rel, edition, arch, target)
+				url, err := feed.GetLatestArchive(rel, options)
 				if err != nil {
-					errs = append(errs, err)
+					catcher.Add(err)
 					continue
 				}
 				output <- url
@@ -152,21 +174,23 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, edition MongoDBEdition
 
 			version, ok := feed.GetVersion(rel)
 			if !ok {
-				errs = append(errs, errors.Errorf("no version defined for %s", rel))
+				catcher.Add(errors.Errorf("no version defined for %s", rel))
 				continue
 			}
-			dl, err := version.GetDownload(edition, arch, target)
+			dl, err := version.GetDownload(options)
 			if err != nil {
-				errs = append(errs, err)
+				catcher.Add(err)
 				continue
 			}
 
 			output <- dl.Archive.Url
 		}
 		close(output)
-		errReturn <- errs
-		close(errReturn)
+		if catcher.HasErrors() {
+			errOut <- catcher.Resolve()
+		}
+		close(errOut)
 	}()
 
-	return output, errReturn
+	return output, errOut
 }
