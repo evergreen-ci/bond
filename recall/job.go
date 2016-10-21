@@ -51,7 +51,7 @@ func NewDownloadJob(url, path string, force bool) (*DownloadFileJob, error) {
 		return nil, errors.Wrap(err, "problem constructing Job object (url)")
 	}
 
-	if err := j.setDirectory(url); err != nil {
+	if err := j.setDirectory(path); err != nil {
 		return nil, errors.Wrap(err, "problem constructing Job object (directory)")
 	}
 
@@ -148,8 +148,11 @@ func (j *DownloadFileJob) setURL(url string) error {
 		return errors.Errorf("%s is not a valid url", url)
 	}
 
-	j.URL = url
+	if strings.HasSuffix(url, "/") {
+		return errors.Errorf("%s does not contain a valid filename component", url)
+	}
 
+	j.URL = url
 	j.FileName = filepath.Base(url)
 
 	if strings.HasSuffix(url, ".tar.gz") {
