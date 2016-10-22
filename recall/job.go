@@ -79,6 +79,7 @@ func (j *DownloadFileJob) Run() {
 	defer j.MarkComplete()
 
 	fn := j.getFileName()
+	defer attemptTimestampUpdate(fn)
 
 	// in theory the queue should do this next check, but most do not
 	if state := j.Dependency().State(); state == dependency.Passed {
@@ -106,13 +107,19 @@ func (j *DownloadFileJob) Run() {
 		j.handleError(errors.Wrap(err, "problem extracting artifacts"))
 		return
 	}
+}
 
+//
+// Internal Methods
+//
+
+func attemptTimestampUpdate(fn string) {
 	// update the timestamps so we playwell with the cache. These
 	// operations are logged but don't impact the tasks error
 	// state if they fail.
 	now := time.Now()
 	if err := os.Chtimes(fn, now, now); err != nil {
-		grip.CatchWarning(err)
+		grip.Debug(err)
 	}
 
 	// hopefully directory names in archives are the same are the
@@ -120,13 +127,9 @@ func (j *DownloadFileJob) Run() {
 	// probably require a different archiver tool.
 	dirname := fn[0 : len(fn)-len(filepath.Ext(fn))]
 	if err := os.Chtimes(dirname, now, now); err != nil {
-		grip.CatchWarning(err)
+		grip.Debug(err)
 	}
 }
-
-//
-// Internal Methods
-//
 
 func (j *DownloadFileJob) handleError(err error) {
 	j.AddError(err)
