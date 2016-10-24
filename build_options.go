@@ -11,6 +11,7 @@ type BuildOptions struct {
 	Target  string
 	Arch    MongoDBArch
 	Edition MongoDBEdition
+	Debug   bool
 }
 
 // Validate checks a BuildOption structure and ensures that there are

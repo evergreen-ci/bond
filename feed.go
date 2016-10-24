@@ -28,6 +28,7 @@ type ArtifactDownload struct {
 	Edition MongoDBEdition
 	Target  string
 	Archive struct {
+		Debug  string `bson:"debug_symbols" json:"debug_symbols" yaml:"debug_symbols"`
 		Sha1   string
 		Sha256 string
 		Url    string
@@ -37,11 +38,13 @@ type ArtifactDownload struct {
 }
 
 func (dl ArtifactDownload) GetBuildOptions() BuildOptions {
-	return BuildOptions{
+	opts := BuildOptions{
 		Target:  dl.Target,
 		Arch:    dl.Arch,
 		Edition: dl.Edition,
 	}
+
+	return opts
 }
 
 const day = time.Hour * 24
@@ -142,6 +145,10 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 		return "", errors.Errorf("series '%s' is not a valid version series", series)
 	}
 
+	if options.Debug {
+		return "", errors.New("debug symbols are not valid for nightly releases")
+	}
+
 	version, ok := feed.GetVersion(series + ".0")
 	if !ok {
 		return "", errors.Errorf("there is no .0 release for series '%s' in the feed", series)
@@ -199,6 +206,10 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) 
 				continue
 			}
 
+			if options.Debug {
+				output <- dl.Archive.Debug
+				continue
+			}
 			output <- dl.Archive.Url
 		}
 		close(output)
