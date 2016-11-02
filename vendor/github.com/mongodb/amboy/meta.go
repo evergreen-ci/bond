@@ -7,8 +7,8 @@ import (
 
 // ResolveErrors takes a queue object and iterates over the results
 // and returns a single aggregated error for the queue's job. The
-// completeness of this operation depends on implementation of a the
-// queue implementation's Results() method.
+// completeness of this operation depends on the implementation of a
+// the queue implementation's Results() method.
 func ResolveErrors(ctx context.Context, q Queue) error {
 	catcher := grip.NewCatcher()
 

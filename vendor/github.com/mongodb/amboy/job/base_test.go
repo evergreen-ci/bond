@@ -1,4 +1,4 @@
-package amboy
+package job
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 )
 
 type BaseCheckSuite struct {
-	base    *JobBase
+	base    *Base
 	require *require.Assertions
 	suite.Suite
 }
@@ -25,7 +25,7 @@ func (s *BaseCheckSuite) SetupSuite() {
 }
 
 func (s *BaseCheckSuite) SetupTest() {
-	s.base = &JobBase{dep: dependency.NewAlways()}
+	s.base = &Base{dep: dependency.NewAlways()}
 }
 
 func (s *BaseCheckSuite) TestInitialValuesOfBaseObject() {
@@ -80,25 +80,4 @@ func (s *BaseCheckSuite) TestMarkCompleteHelperSetsCompleteState() {
 
 	s.True(s.base.IsComplete)
 	s.True(s.base.Completed())
-}
-
-func (s *BaseCheckSuite) TestRoundTripAbilityThroughImportAndExport() {
-	s.base.JobType = JobType{
-		Format:  JSON,
-		Version: 42,
-	}
-
-	s.Equal(42, s.base.JobType.Version)
-	out, err := s.base.Export()
-
-	s.NoError(err)
-	s.NotNil(out)
-
-	s.base.JobType.Version = 21
-	s.Equal(21, s.base.JobType.Version)
-
-	err = s.base.Import(out)
-	s.NoError(err)
-	s.Equal(42, s.base.JobType.Version)
-
 }
