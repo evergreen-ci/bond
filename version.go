@@ -112,5 +112,5 @@ func (dl ArtifactDownload) GetPackages() []string {
 }
 
 func (dl ArtifactDownload) GetArchive() string {
-	return dl.Archive.Url
+	return dl.Archive.URL
 }

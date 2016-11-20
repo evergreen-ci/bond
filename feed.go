@@ -31,7 +31,7 @@ type ArtifactDownload struct {
 		Debug  string `bson:"debug_symbols" json:"debug_symbols" yaml:"debug_symbols"`
 		Sha1   string
 		Sha256 string
-		Url    string
+		URL    string `bson:"url" json:"url" yaml:"url"`
 	}
 	Msi      string
 	Packages []string
@@ -170,11 +170,11 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 	}
 
 	if seriesNum%2 == 1 {
-		return strings.Replace(dl.Archive.Url, version.Version, "latest", -1), nil
+		return strings.Replace(dl.Archive.URL, version.Version, "latest", -1), nil
 	}
 
 	// if it's a stable version we just replace the version with the word latest.
-	return strings.Replace(dl.Archive.Url, version.Version, "v"+series+"-latest", -1), nil
+	return strings.Replace(dl.Archive.URL, version.Version, "v"+series+"-latest", -1), nil
 }
 
 func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) (<-chan string, <-chan error) {
@@ -210,7 +210,7 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) 
 				output <- dl.Archive.Debug
 				continue
 			}
-			output <- dl.Archive.Url
+			output <- dl.Archive.URL
 		}
 		close(output)
 		if catcher.HasErrors() {

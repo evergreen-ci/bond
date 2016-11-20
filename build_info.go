@@ -29,8 +29,14 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 	}
 
 	if info.Options.Arch == "" {
-		return BuildInfo{}, errors.Errorf("path '%s' does not  ")
+		return BuildInfo{}, errors.Errorf("path '%s' does not specify an arch", fileName)
 	}
+
+	version, err := getVersion(fileName)
+	if err != nil {
+		return BuildInfo{}, errors.Wrap(err, "problem resolving version")
+	}
+	info.Version = version
 
 	edition, err := getEdition(fileName)
 	if err != nil {
@@ -43,10 +49,6 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 		return BuildInfo{}, errors.Wrap(err, "problem resolving target")
 	}
 	info.Options.Target = target
-
-	if err != nil {
-		return BuildInfo{}, errors.Wrap(err, "problem resolving version")
-	}
 
 	return info, nil
 }
