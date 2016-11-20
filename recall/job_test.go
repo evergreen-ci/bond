@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -153,6 +154,16 @@ func (s *DownloadJobSuite) TestConstructorSetsDependencyBasedOnForceParameter() 
 	j, err = NewDownloadJob(url, path, false)
 	s.NoError(err)
 	s.Equal(dependency.NewCreatesFile("../build/foo.tgz").Type(), j.Dependency().Type())
+}
+
+func (s *DownloadJobSuite) TestErrorHandler() {
+	s.False(s.job.HasErrors())
+	s.job.handleError(nil)
+	s.False(s.job.HasErrors())
+
+	s.job.handleError(errors.New("foo"))
+	s.True(s.job.HasErrors())
+
 }
 
 //

@@ -14,6 +14,13 @@ type BuildOptions struct {
 	Debug   bool
 }
 
+func (o BuildOptions) GetBuildInfo(version string) BuildInfo {
+	return BuildInfo{
+		Version: version,
+		Options: o,
+	}
+}
+
 // Validate checks a BuildOption structure and ensures that there are
 // no errors.
 func (o BuildOptions) Validate() error {
