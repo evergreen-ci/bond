@@ -14,6 +14,8 @@ type BuildOptions struct {
 	Debug   bool
 }
 
+// GetBuildInfo given a version string, generates a BuildInfo object
+// from a BuildOptions object.
 func (o BuildOptions) GetBuildInfo(version string) BuildInfo {
 	return BuildInfo{
 		Version: version,

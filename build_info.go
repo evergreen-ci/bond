@@ -7,11 +7,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// BuildInfo captures information about a specific, single, build, and
+// includes information about the build variant (i.e. edition, target
+// platform, and architecture) as well as the version.
 type BuildInfo struct {
 	Version string
 	Options BuildOptions
 }
 
+// GetInfoFromFileName given a path, parses information about the
+// build from that string and returns a BuildInfo object.
 func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 	info := BuildInfo{Options: BuildOptions{}}
 	fileName = filepath.Base(fileName)

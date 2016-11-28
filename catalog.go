@@ -12,12 +12,16 @@ import (
 	"github.com/tychoish/grip"
 )
 
+// BuildCatalog is a structure that represents a group of MongoDB
+// artifacts managed by bond, and provides an interface for retrieving
+// artifacts.
 type BuildCatalog struct {
 	Path  string
 	table map[BuildInfo]string
 	mutex sync.RWMutex
 }
 
+// NewCatalog populates and returns a BuildCatalog object from a given path.
 func NewCatalog(path string) (*BuildCatalog, error) {
 	var err error
 	path, err = filepath.Abs(path)
@@ -61,7 +65,21 @@ func NewCatalog(path string) (*BuildCatalog, error) {
 	return cache, nil
 }
 
+// Add adds a build to the catalog, and returns an error if it's not a
+// valid build. The build file name must be a part of the path
+// specified when creating the BuildCatalog object, otherwise Add will
+// not add this item to the cache and return an error and .
 func (c *BuildCatalog) Add(fileName string) error {
+	fileName, err := filepath.Abs(fileName)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding absolute path of %s object", fileName)
+	}
+
+	if !strings.HasPrefix(fileName, c.Path) {
+		return errors.Errorf("cannot add %s to '%s' cache because it is not in the same root",
+			fileName, c.Path)
+	}
+
 	info, err := GetInfoFromFileName(fileName)
 	if err != nil {
 		return errors.Wrap(err, "problem collecting information about build")
@@ -83,6 +101,9 @@ func (c *BuildCatalog) Add(fileName string) error {
 	return nil
 }
 
+// Get returns the path to a build in the BuildCatalog based on the
+// parameters presented. Returns an error if a build matching the
+// parameters specified does not exist in the cache.
 func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (string, error) {
 	info := BuildInfo{
 		Version: version,
