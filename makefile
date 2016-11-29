@@ -63,7 +63,7 @@ lint:$(lintDeps)
 	$(gopath)/bin/gometalinter $(lintArgs) ./...
 lint-deps:$(lintDeps)
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	$(vendorGopath) go build ./
+	$(vendorGopath) go build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 build-race:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
 	$(vendorGopath) go build -race $(subst -,/,$(foreach pkg,$(packages),./$(pkg)))
 test:$(testOutput)
