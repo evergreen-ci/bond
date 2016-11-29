@@ -25,7 +25,6 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 		info.Options.Debug = true
 	}
 
-	// TODO probably need to make this a string.
 	for _, arch := range []MongoDBArch{AMD64, X86, POWER, ZSeries} {
 		if strings.Contains(fileName, string(arch)) {
 			info.Options.Arch = arch
@@ -49,7 +48,7 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 	}
 	info.Options.Edition = edition
 
-	target, err := getTarget(fileName)
+	target, err := getTarget(fileName, version)
 	if err != nil {
 		return BuildInfo{}, errors.Wrap(err, "problem resolving target")
 	}
@@ -64,24 +63,32 @@ func getVersion(fn string) (string, error) {
 		return "", errors.Errorf("path %s does not contain enough elements to include a version", fn)
 	}
 
-	isNightly := strings.Contains(fn, "~")
-	isRc := strings.Contains(parts[len(parts)-1], "rc")
+	var isNightly bool
+	var isRc bool
+
+	// the (rear) index of the rc depends if it's a nightly or
+	// not, so we have to start there.
+	rcPos := 1
+	if len(parts[len(parts)-1]) == 8 {
+		isNightly = true
+		rcPos = 3
+	}
+	isRc = strings.Contains(parts[len(parts)-rcPos], "rc")
 
 	var rIdx int
 
-	// MUST WRITE TESTS FOR THIS
-
+	// now figure out where the version part starts.
 	if isRc {
 		if isNightly {
-			rIdx = len(parts) - 3
+			rIdx = len(parts) - 4
 		} else {
 			rIdx = len(parts) - 2
 		}
 	} else {
 		if isNightly {
-			rIdx = len(parts) - 1
+			rIdx = len(parts) - 3
 		} else {
-			rIdx = len(parts)
+			rIdx = len(parts) - 1
 		}
 	}
 
@@ -89,8 +96,7 @@ func getVersion(fn string) (string, error) {
 		return "", errors.Errorf("%s is an invalid file name", fn)
 	}
 
-	return strings.Join(parts[rIdx-1:], "-"), nil
-
+	return strings.Join(parts[rIdx:], "-"), nil
 }
 
 func getEdition(fn string) (MongoDBEdition, error) {
@@ -98,14 +104,14 @@ func getEdition(fn string) (MongoDBEdition, error) {
 		return Enterprise, nil
 	}
 
-	for _, distro := range []string{"rhel", "suse", "2008", "osx-ssl", "debian", "ubuntu", "amazon"} {
+	for _, distro := range []string{"rhel", "suse", "osx-ssl", "debian", "ubuntu", "amazon"} {
 		if strings.Contains(fn, distro) {
 			return CommunityTargeted, nil
 		}
 	}
 
-	for _, platform := range []string{"osx", "win32", "sunos5", "Linux"} {
-		if strings.HasPrefix(fn, "manged-"+platform) {
+	for _, platform := range []string{"osx", "win32", "sunos5", "linux", "sunos6"} {
+		if strings.HasPrefix(fn, "mongodb-"+platform) {
 			return Base, nil
 		}
 	}
@@ -113,27 +119,31 @@ func getEdition(fn string) (MongoDBEdition, error) {
 	return "", errors.Errorf("path %s does not have a valid edition", fn)
 }
 
-func getTarget(fn string) (string, error) {
+func getTarget(fn, version string) (string, error) {
 	// enterprise targets:
 	if strings.Contains(fn, "enterprise") {
-		for _, platform := range []string{"osx", "windows"} {
+		for _, platform := range []string{"windows", "osx"} {
 			if strings.Contains(fn, platform) {
 				return platform, nil
 			}
 		}
 		if strings.Contains(fn, "linux") {
-			return strings.Split(fn, "-")[3], nil
+			return strings.Split(fn, "-")[4], nil
 		}
 	}
 
 	// all base and community targeted cases
 
-	// OSX variants
-	if strings.Contains(fn, "osx-ssl") {
-		return "osx-ssl", nil
+	// linux distros
+	if strings.Contains(fn, "linux-i386") {
+		return "linux_i386", nil
 	}
-	if strings.Contains(fn, "osx") {
-		return "osx", nil
+	if strings.Contains(fn, "linux") {
+		if len(version)+21 == len(fn) {
+			return "linux_x86_64", nil
+		}
+
+		return strings.Split(fn, "-")[3], nil
 	}
 
 	// all windows windows
@@ -150,12 +160,12 @@ func getTarget(fn string) (string, error) {
 		return "windows_x86_64", nil
 	}
 
-	// linux base distro
-	if strings.Contains(fn, "linux-x86_64") {
-		return "linux_x86_64", nil
+	// OSX variants
+	if strings.Contains(fn, "osx-ssl") {
+		return "osx-ssl", nil
 	}
-	if strings.Contains(fn, "linux-i386") {
-		return "linux_i386", nil
+	if strings.Contains(fn, "osx") {
+		return "osx", nil
 	}
 
 	// solaris!
