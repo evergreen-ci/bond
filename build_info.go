@@ -59,8 +59,12 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 
 func getVersion(fn string) (string, error) {
 	parts := strings.Split(fn, "-")
-	if len(parts) <= 2 {
+	if len(parts) <= 3 {
 		return "", errors.Errorf("path %s does not contain enough elements to include a version", fn)
+	}
+
+	if strings.Contains(fn, "-v2.4-") || len(parts[len(parts)-4]) == 40 {
+		return strings.Join(parts[len(parts)-4:], "-"), nil
 	}
 
 	var isNightly bool
@@ -90,10 +94,6 @@ func getVersion(fn string) (string, error) {
 		} else {
 			rIdx = len(parts) - 1
 		}
-	}
-
-	if rIdx <= 2 {
-		return "", errors.Errorf("%s is an invalid file name", fn)
 	}
 
 	return strings.Join(parts[rIdx:], "-"), nil

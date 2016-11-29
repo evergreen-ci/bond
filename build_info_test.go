@@ -316,10 +316,14 @@ func TestVersionIdentification(t *testing.T) {
 		"mongodb-linux-x86_64-2.4.0-rc0":  "2.4.0-rc0",
 
 		// nightlies, new era
-		"mongodb-osx-x86_64-3.2.9-rc0-8-g22ec9e9":  "3.2.9-rc0-8-g22ec9e9",
-		"mongodb-osx-x86_64-3.4.0-rc1-21-gf50bc8e": "3.4.0-rc1-21-gf50bc8e",
-		"mongodb-osx-x86_64-3.2.9-8-g22ec9e9":      "3.2.9-8-g22ec9e9",
-		"mongodb-osx-x86_64-3.4.0-21-gf50bc8e":     "3.4.0-21-gf50bc8e",
+		"mongodb-osx-x86_64-3.2.9-rc0-8-g22ec9e9":                                "3.2.9-rc0-8-g22ec9e9",
+		"mongodb-osx-x86_64-3.4.0-rc1-21-gf50bc8e":                               "3.4.0-rc1-21-gf50bc8e",
+		"mongodb-osx-x86_64-3.2.9-8-g22ec9e9":                                    "3.2.9-8-g22ec9e9",
+		"mongodb-osx-x86_64-3.4.0-21-gf50bc8e":                                   "3.4.0-21-gf50bc8e",
+		"mongodb-osx-x86_64-3.2.11-11-g72bd156":                                  "3.2.11-11-g72bd156",
+		"mongodb-osx-x86_64-3.4.0-rc3-97-g99f1f23":                               "3.4.0-rc3-97-g99f1f23",
+		"mongodb-osx-x86_64-c9a76918c01d86d08ee102ebeedd79e2911bb1ce-2016-08-25": "c9a76918c01d86d08ee102ebeedd79e2911bb1ce-2016-08-25", // 2.6 was odd
+		"mongodb-osx-x86_64-v2.4-2015-07-09":                                     "v2.4-2015-07-09",
 	}
 
 	for dir, version := range builds {
