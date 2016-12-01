@@ -168,7 +168,6 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 
 func getContents(path string) ([]os.FileInfo, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-
 		return []os.FileInfo{}, errors.Errorf("path %s does not exist", path)
 	}
 
