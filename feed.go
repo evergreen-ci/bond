@@ -202,18 +202,16 @@ func (feed *ArtifactsFeed) GetStableRelease(series string) (*ArtifactVersion, er
 		if !ok {
 			return nil, errors.Errorf("could not find current version 2.4.14")
 		}
-		version
+		return version, nil
 	}
 
 	for _, version := range feed.Versions {
 		if version.Current && strings.HasPrefix(version.Version, series) {
-			dl, err := version.GetDownload(options)
-			if err != nil {
-				return "", errors.Wrap(err, "problem finding version")
-			}
-			return dl.Archive.URL, nil
+			return version, nil
 		}
 	}
+
+	return nil, errors.Errorf("could not find a current version for series: %s", series)
 }
 
 // GetArchives provides an iterator for all archives given a list of
