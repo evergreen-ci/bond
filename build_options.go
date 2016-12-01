@@ -12,7 +12,7 @@ type BuildOptions struct {
 	Target  string         `json:"target"`
 	Arch    MongoDBArch    `json:"arch"`
 	Edition MongoDBEdition `json:"edition"`
-	Debug   bool           `json:"tag"`
+	Debug   bool           `json:"debug"`
 }
 
 func (o BuildOptions) String() string {
