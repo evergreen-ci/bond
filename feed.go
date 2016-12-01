@@ -136,9 +136,7 @@ func (feed *ArtifactsFeed) GetVersion(release string) (*ArtifactVersion, bool) {
 // builds are atypical, and given how they're produced, may not
 // necessarily reflect the most recent released or unreleased changes on a branch.
 func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions) (string, error) {
-	if len(series) != 3 || string(series[1]) != "." {
-		return "", errors.Errorf("series '%s' is not a valid version series", series)
-	}
+	series = coerceSeries(series)
 
 	if options.Debug {
 		return "", errors.New("debug symbols are not valid for nightly releases")
@@ -193,9 +191,7 @@ func (feed *ArtifactsFeed) GetCurrentArchive(series string, options BuildOptions
 
 // GetStableRelease returns the latest official release for a specific series.
 func (feed *ArtifactsFeed) GetStableRelease(series string) (*ArtifactVersion, error) {
-	if len(series) > 3 {
-		series = series[:2]
-	}
+	series = coerceSeries(series)
 
 	if series == "2.4" {
 		version, ok := feed.GetVersion("2.4.14")
@@ -277,4 +273,15 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) 
 	}()
 
 	return output, errOut
+}
+
+func coerceSeries(series string) string {
+	if series[0] == 'v' {
+		series = series[1:]
+	}
+	if len(series) > 3 {
+		series = series[:2]
+	}
+
+	return series
 }
