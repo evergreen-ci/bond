@@ -114,7 +114,7 @@ func extractArchive(fn string) error {
 	baseName := filepath.Base(fn)
 	baseName = baseName[:len(baseName)-4]
 
-	if strings.HasSuffix(fn, ".tgz") {
+	if filepath.Ext(fn) == ".tgz" {
 		// there is no tar.gz because we renamed it in setURL()
 		if err := archiver.TarGz.Open(fn, dir); err != nil {
 			return errors.Wrap(err, "problem extracting archive")
@@ -150,7 +150,7 @@ func extractArchive(fn string) error {
 				break
 			}
 		}
-	} else if strings.HasSuffix(fn, ".zip") {
+	} else if filepath.Ext(fn) == ".zip" {
 		if err := archiver.Zip.Open(fn, dir); err != nil {
 			return errors.Wrap(err, "problem extracting archive")
 		}
@@ -159,7 +159,6 @@ func extractArchive(fn string) error {
 			return errors.Wrap(err, "problem parsing archive")
 		}
 
-		defer r.Close()
 		for _, f := range r.File {
 			if strings.HasSuffix(f.Name, "mongod.exe") {
 				// name is generally mongodb-<platform>-<version>/bin/mongo
@@ -203,7 +202,8 @@ func attemptTimestampUpdate(fn string) {
 func (j *DownloadFileJob) handleError(err error) {
 	j.AddError(err)
 	grip.CatchError(err)
-	grip.CatchDebug(os.RemoveAll(j.getFileName())) // cleanup
+	grip.Infoln("cleaning up artifacts:", j.FileName)
+	grip.CatchWarning(os.RemoveAll(j.getFileName())) // cleanup
 }
 
 func (j *DownloadFileJob) getFileName() string {

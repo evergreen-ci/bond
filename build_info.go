@@ -1,6 +1,8 @@
 package bond
 
 import (
+	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -11,8 +13,16 @@ import (
 // includes information about the build variant (i.e. edition, target
 // platform, and architecture) as well as the version.
 type BuildInfo struct {
-	Version string
-	Options BuildOptions
+	Version string       `json:"version"`
+	Options BuildOptions `json:"options"`
+}
+
+func (i *BuildInfo) String() string {
+	out, err := json.MarshalIndent(i, "", "   ")
+	if err != nil {
+		return fmt.Sprintf("{ '%s': 'error' }", i.Version)
+	}
+	return string(out)
 }
 
 // GetInfoFromFileName given a path, parses information about the
