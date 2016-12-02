@@ -279,8 +279,9 @@ func coerceSeries(series string) string {
 	if series[0] == 'v' {
 		series = series[1:]
 	}
+
 	if len(series) > 3 {
-		series = series[:2]
+		series = series[:3]
 	}
 
 	return series
