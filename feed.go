@@ -15,7 +15,7 @@ import (
 )
 
 // ArtifactsFeed represents the entire structure of the MongoDB build information feed.
-// Seehttp://downloads.mongodb.org/full.json for an example.
+// See http://downloads.mongodb.org/full.json for an example.
 type ArtifactsFeed struct {
 	Versions []*ArtifactVersion
 
