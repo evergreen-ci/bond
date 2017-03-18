@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // WriteJSONResponse writes a JSON document to the body of an HTTP
@@ -29,9 +29,7 @@ func WriteJSONResponse(w http.ResponseWriter, code int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	size, err := w.Write(out)
-	if err == nil {
-		grip.Debugf("response object was %d", size)
-	} else {
+	if err != nil {
 		grip.Warningf("encountered error %s writing a %d response", err.Error(), size)
 	}
 }
