@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/tychoish/grip"
 )
 
 // ArtifactsFeed represents the entire structure of the MongoDB build information feed.
