@@ -1,16 +1,17 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,7 +28,7 @@ type MongoDB struct {
 	canceler   context.CancelFunc
 	instanceID string
 	priority   bool
-
+	mu         sync.RWMutex
 	*LockManager
 }
 
@@ -38,8 +39,6 @@ type MongoDBOptions struct {
 	URI      string
 	DB       string
 	Priority bool
-
-	// TODO it might be good to set lock timeouts here.
 }
 
 // DefaultMongoDBOptions constructs a new options object with default
@@ -102,14 +101,17 @@ func (d *MongoDB) Open(ctx context.Context) error {
 func (d *MongoDB) start(ctx context.Context, session *mgo.Session) error {
 	dCtx, cancel := context.WithCancel(ctx)
 	d.canceler = cancel
-	d.session = session
 
 	session.SetSafe(&mgo.Safe{WMode: "majority"})
+
+	d.mu.Lock()
+	d.session = session
+	d.mu.Unlock()
+
 	d.LockManager.Open(ctx)
 
 	go func() {
 		<-dCtx.Done()
-		d.session.Close()
 		grip.Info("closing session for mongodb driver")
 	}()
 
@@ -121,6 +123,8 @@ func (d *MongoDB) start(ctx context.Context, session *mgo.Session) error {
 }
 
 func (d *MongoDB) getJobsCollection() (*mgo.Session, *mgo.Collection) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	session := d.session.Copy()
 
 	return session, session.DB(d.dbName).C(d.name + ".jobs")
@@ -262,6 +266,9 @@ func (d *MongoDB) Jobs() <-chan amboy.Job {
 // Next returns one job, not marked complete from the database.
 func (d *MongoDB) Next() amboy.Job {
 	session, jobs := d.getJobsCollection()
+	if session == nil || jobs == nil {
+		return nil
+	}
 	defer session.Close()
 
 	j := &registry.JobInterchange{}

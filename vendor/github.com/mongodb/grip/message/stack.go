@@ -29,6 +29,8 @@ import (
 	"time"
 )
 
+const maxLevels = 1024
+
 // types are internal, and exposed only via the composer interface.
 
 type stackMessage struct {
@@ -49,7 +51,7 @@ type StackFrame struct {
 
 // StackTrace structs are returned by the Raw method of the stackMessage type
 type StackTrace struct {
-	Message string       `bson:"message" json:"message" yaml:"message"`
+	Message string       `bson:"message,omitempty" json:"message,omitempty" yaml:"message,omitempty"`
 	Frames  []StackFrame `bson:"frames" json:"frames" yaml:"frames"`
 	Time    time.Time    `bson:"time" json:"time" yaml:"time"`
 }
@@ -131,7 +133,7 @@ func (m *stackMessage) Raw() interface{} {
 func captureStack(skip int) []StackFrame {
 	if skip <= 0 {
 		// don't recorded captureStack
-		skip++
+		skip = 1
 	}
 
 	// captureStack is always called by a constructor, so we need
@@ -140,7 +142,7 @@ func captureStack(skip int) []StackFrame {
 
 	trace := []StackFrame{}
 
-	for {
+	for i := 0; i < maxLevels; i++ {
 		pc, file, line, ok := runtime.Caller(skip)
 		if !ok {
 			break

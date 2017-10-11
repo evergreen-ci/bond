@@ -1,8 +1,9 @@
-// +build cgo,!gccgo
-
 package queue
 
 import (
+	"context"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -11,10 +12,9 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue/driver"
+	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -43,17 +43,15 @@ func TestLocalOrderedQueueSuiteThreeWorker(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemoteMongoDBOrderedQueueSuiteTwoWorkers(t *testing.T) {
+func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 	s := &OrderedQueueSuite{}
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session, err := mgo.Dial(uri)
-	if err != nil {
-		if !s.NoError(err) {
-			return
-		}
+	if err != nil || session == nil {
+		t.Fatal("problem configuring connection to:", uri)
 	}
 	defer session.Close()
 
@@ -86,6 +84,10 @@ func TestRemoteMongoDBOrderedQueueSuiteTwoWorkers(t *testing.T) {
 }
 
 func TestRemoteLocalOrderedQueueSuite(t *testing.T) {
+	if runtime.Compiler == "gccgo" {
+		t.Skip("local driver not supported on gccgo.")
+	}
+
 	s := &OrderedQueueSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -191,19 +193,21 @@ func (s *OrderedQueueSuite) TestInternalRunnerCannotBeChangedAfterStartingAQueue
 }
 
 func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObjects() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	job := job.NewShellJob("true", "")
+	job := job.NewShellJob("echo true", "")
 	s.False(job.Status().Completed)
 
 	s.NoError(s.queue.Put(job))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	s.NoError(s.queue.Start(ctx))
 
-	amboy.Wait(s.queue)
+	grip.Critical(s.queue.Stats())
+	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
+	grip.Critical(s.queue.Stats())
 
 	result, ok := <-s.queue.Results()
-	if s.True(ok) {
+	if s.True(ok, "%+v", s.queue.Stats()) {
 		s.Equal(job.ID(), result.ID())
 		s.True(result.Status().Completed)
 	}
@@ -227,9 +231,11 @@ func (s *OrderedQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 }
 
 func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
+	cwd := GetDirectoryOfFile()
+
 	j1 := job.NewShellJob("echo foo", "")
-	j2 := job.NewShellJob("true", "")
-	j1.SetDependency(dependency.NewCreatesFile("ordered_test.go"))
+	j2 := job.NewShellJob("echo true", "")
+	j1.SetDependency(dependency.NewCreatesFile(filepath.Join(cwd, "ordered_test.go")))
 	s.NoError(j1.Dependency().AddEdge(j2.ID()))
 
 	s.Equal(j1.Dependency().State(), dependency.Passed)
@@ -238,20 +244,25 @@ func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
 	s.False(j1.Status().Completed)
 	s.False(j2.Status().Completed)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	s.NoError(s.queue.Put(j1))
 	s.NoError(s.queue.Put(j2))
+	s.NoError(s.queue.Put(j1))
 
 	s.NoError(s.queue.Start(ctx))
 
+	grip.Critical(s.queue.Stats())
 	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
+	grip.Critical(s.queue.Stats())
+
 	j1Refreshed, ok1 := s.queue.Get(j1.ID())
 	j2Refreshed, ok2 := s.queue.Get(j2.ID())
-	s.True(ok1)
-	s.True(ok2)
-	s.False(j1Refreshed.Status().Completed)
-	s.True(j2Refreshed.Status().Completed)
+	if s.True(ok1) {
+		s.False(j1Refreshed.Status().Completed)
+	}
+	if s.True(ok2) {
+		s.True(j2Refreshed.Status().Completed, "%+v", j2Refreshed.Status())
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -341,4 +352,10 @@ func (s *LocalOrderedSuite) TestPuttingJobIntoQueueAfterStartingReturnsError() {
 
 	s.NoError(s.queue.Start(ctx))
 	s.Error(s.queue.Put(j))
+}
+
+func GetDirectoryOfFile() string {
+	_, file, _, _ := runtime.Caller(1)
+
+	return filepath.Dir(file)
 }

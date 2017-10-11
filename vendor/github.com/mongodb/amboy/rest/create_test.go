@@ -4,6 +4,7 @@ package rest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -13,7 +14,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type CreateJobSuite struct {
@@ -110,18 +110,20 @@ func (s *CreateJobSuite) TestRequestWithNilPayload() {
 func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
 	router, err := s.service.App().Router()
 	s.NoError(err)
-	j := job.NewShellJob("true", "")
-	s.NoError(s.service.queue.Put(j))
 
-	payload, err := registry.MakeJobInterchange(j)
+	payload, err := registry.MakeJobInterchange(job.NewShellJob("true", ""))
 	s.NoError(err)
 
 	rb, err := json.Marshal(payload)
 	s.NoError(err)
 
+	j, err := registry.ConvertToJob(payload)
+	s.NoError(err)
+
+	s.NoError(s.service.queue.Put(j))
+
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "http://example.com/v1/job/create", bytes.NewBuffer(rb))
-
 	router.ServeHTTP(w, req)
 	s.Equal(400, w.Code)
 

@@ -1,21 +1,20 @@
 package queue
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
-
-	mgo "gopkg.in/mgo.v2"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func init() {
@@ -50,12 +49,7 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 			return err
 		}
 
-		err = session.DB("amboy").C(name + ".jobs").DropCollection()
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return session.DB("amboy").C(name + ".jobs").DropCollection()
 	}
 }
 
