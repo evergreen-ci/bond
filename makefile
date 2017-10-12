@@ -149,12 +149,11 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
 # start vendoring configuration
 vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
-	rm -rf vendor/github.com/stretchr/testify/vendor
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr
-	rm -rf vendor/github.com/mongodb/amboy/vendor/golang.org/x/net
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+
+
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -fr
 phony += vendor-clean
 # end vendoring tooling configuration
