@@ -10,9 +10,13 @@ package pool
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 )
 
 // NewLocalWorkers is a constructor for pool of worker processes that
@@ -39,6 +43,7 @@ type localWorkers struct {
 	started  bool
 	queue    amboy.Queue
 	canceler context.CancelFunc
+	wg       sync.WaitGroup
 }
 
 // SetQueue allows callers to inject alternate amboy.Queue objects into
@@ -59,10 +64,11 @@ func (r *localWorkers) Started() bool {
 	return r.started
 }
 
-func startWorkerServer(ctx context.Context, q amboy.Queue) <-chan amboy.Job {
+func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan amboy.Job {
 	output := make(chan amboy.Job)
-
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
@@ -87,14 +93,54 @@ func startWorkerServer(ctx context.Context, q amboy.Queue) <-chan amboy.Job {
 	return output
 }
 
-func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue) {
+func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.WaitGroup) {
+	var (
+		err error
+		job amboy.Job
+	)
+
+	wg.Add(1)
+	defer wg.Done()
+	defer func() {
+		// if we hit a panic we want to add an error to the job;
+		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
+		if err != nil {
+			if job != nil {
+				job.AddError(err)
+				q.Complete(ctx, job)
+			}
+			// start a replacement worker.
+			go worker(ctx, jobs, q, wg)
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case job := <-jobs:
+		case job = <-jobs:
+			if job == nil {
+				continue
+			}
+
+			ti := amboy.JobTimeInfo{
+				Start: time.Now(),
+			}
+
 			job.Run()
+			ti.End = time.Now()
+			job.UpdateTimeInfo(ti)
 			q.Complete(ctx, job)
+
+			r := message.Fields{
+				"job":           job.ID(),
+				"job_type":      job.Type().Name,
+				"duration_secs": ti.Duration().Seconds(),
+			}
+			if err := job.Error(); err != nil {
+				r["error"] = err.Error()
+			}
+			grip.Debug(r)
 		}
 	}
 }
@@ -112,14 +158,14 @@ func (r *localWorkers) Start(ctx context.Context) error {
 
 	workerCtx, cancel := context.WithCancel(ctx)
 	r.canceler = cancel
-	jobs := startWorkerServer(workerCtx, r.queue)
+	jobs := startWorkerServer(workerCtx, r.queue, &r.wg)
 
 	r.started = true
 	grip.Debugf("running %d workers", r.size)
 
 	for w := 1; w <= r.size; w++ {
 		go func() {
-			worker(workerCtx, jobs, r.queue)
+			worker(workerCtx, jobs, r.queue, &r.wg)
 		}()
 		grip.Debugf("started worker %d of %d waiting for jobs", w, r.size)
 	}
@@ -132,4 +178,5 @@ func (r *localWorkers) Close() {
 	if r.canceler != nil {
 		r.canceler()
 	}
+	r.wg.Wait()
 }

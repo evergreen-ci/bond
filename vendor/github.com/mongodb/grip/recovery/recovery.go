@@ -15,7 +15,6 @@
 package recovery
 
 import (
-	"errors"
 	"os"
 	"strings"
 
@@ -34,7 +33,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; exiting",
 			"panic":               panicString(p),
-			"stack":               message.NewStack(1, "").Raw(),
+			"stack":               message.NewStack(1, "").String(),
 		}
 
 		if len(opDetails) > 0 {
@@ -43,7 +42,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 
 		// check this env var so that we can avoid exiting in the test.
 		if os.Getenv(killOverrideVarName) == "" {
-			grip.GetSender().Close()
+			_ = grip.GetSender().Close()
 			grip.EmergencyFatal(m)
 		} else {
 			grip.Emergency(m)
@@ -51,7 +50,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 	}
 }
 
-// LogStacktraceAndContinue recovers from a panic, and then logs the
+// LogStackTraceAndContinue recovers from a panic, and then logs the
 // captures a stack trace and logs a structured message at "Alert"
 // level without further action.
 //
@@ -99,12 +98,13 @@ func HandlePanicWithError(p interface{}, err error, opDetails ...string) error {
 	catcher.Add(err)
 
 	if p != nil {
-		ps := panicString(p)
-		catcher.Add(errors.New(ps))
+		perr := panicError(p)
+		catcher.Add(perr)
+
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; adding error",
-			"stack":               message.NewStack(2, "").Raw(),
-			"panic":               ps,
+			"stack":               message.NewStack(2, "").String(),
+			"panic":               perr.Error(),
 		}
 
 		if err != nil {

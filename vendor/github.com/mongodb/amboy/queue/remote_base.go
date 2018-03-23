@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type remoteBase struct {
 	started    bool
-	driver     driver.Driver
+	driver     Driver
 	channel    chan amboy.Job
 	blocked    map[string]struct{}
 	dispatched map[string]struct{}
@@ -33,7 +32,11 @@ func newRemoteBase() *remoteBase {
 // same job to a queue more than once, but this depends on the
 // implementation of the underlying driver.
 func (q *remoteBase) Put(j amboy.Job) error {
-	return q.driver.Save(j)
+	if j.Type().Version < 0 {
+		return errors.New("cannot add jobs with versions less than 0")
+	}
+
+	return q.driver.Put(j)
 }
 
 // Get retrieves a job from the queue's storage. The second value
@@ -61,16 +64,26 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			job := q.driver.Next()
+			job := q.driver.Next(ctx)
 			if !q.canDispatch(job) {
 				continue
 			}
 
 			stat := job.Status()
-			if stat.InProgress || stat.Completed {
+
+			// don't return completed jobs for any reason
+			if stat.Completed {
 				continue
 			}
 
+			// don't return an inprogress job if the mod
+			// time is less than the lock timeout
+			if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
+				continue
+			}
+
+			// therefore return any pending job or job
+			// that has a timed out lock.
 			q.channel <- job
 		}
 	}
@@ -120,11 +133,14 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 }
 
 // Results provides a generator that iterates all completed jobs.
-func (q *remoteBase) Results() <-chan amboy.Job {
+func (q *remoteBase) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 	go func() {
 		defer close(output)
 		for j := range q.driver.Jobs() {
+			if ctx.Err() != nil {
+				return
+			}
 			if j.Status().Completed {
 				output <- j
 			}
@@ -132,6 +148,10 @@ func (q *remoteBase) Results() <-chan amboy.Job {
 		}
 	}()
 	return output
+}
+
+func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	return q.driver.JobStats(ctx)
 }
 
 // Stats returns a amboy.QueueStats object that reflects the progress
@@ -168,14 +188,14 @@ func (q *remoteBase) SetRunner(r amboy.Runner) error {
 // Driver provides access to the embedded driver instance which
 // provides access to the Queue's persistence layer. This method is
 // not part of the amboy.Queue interface.
-func (q *remoteBase) Driver() driver.Driver {
+func (q *remoteBase) Driver() Driver {
 	return q.driver
 }
 
 // SetDriver allows callers to inject at runtime alternate driver
 // instances. It is an error to change Driver instances after starting
 // a queue. This method is not part of the amboy.Queue interface.
-func (q *remoteBase) SetDriver(d driver.Driver) error {
+func (q *remoteBase) SetDriver(d Driver) error {
 	if q.Started() {
 		return errors.New("cannot change drivers after starting queue")
 	}

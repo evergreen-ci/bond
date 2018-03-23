@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
@@ -39,7 +38,6 @@ func newGroupInstance() *Group {
 			JobType: amboy.JobType{
 				Name:    "group",
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}
@@ -58,11 +56,11 @@ func (g *Group) Add(j amboy.Job) error {
 	defer g.mutex.Unlock()
 	_, exists := g.Jobs[name]
 	if exists {
-		return fmt.Errorf("job named '%s', already exists in Group %s",
+		return errors.Errorf("job named '%s', already exists in Group %s",
 			name, g.ID())
 	}
 
-	job, err := registry.MakeJobInterchange(j)
+	job, err := registry.MakeJobInterchange(j, amboy.JSON)
 	if err != nil {
 		return err
 	}
@@ -85,9 +83,10 @@ func (g *Group) Run() {
 
 	g.mutex.RLock()
 	for _, job := range g.Jobs {
-		runnableJob, err := registry.ConvertToJob(job)
+		runnableJob, err := registry.ConvertToJob(job, amboy.JSON)
 		if err != nil {
 			g.AddError(err)
+			continue
 		}
 
 		depState := runnableJob.Dependency().State()
@@ -110,7 +109,7 @@ func (g *Group) Run() {
 			jobErr := j.Error()
 			g.AddError(jobErr)
 
-			job, err := registry.MakeJobInterchange(j)
+			job, err := registry.MakeJobInterchange(j, amboy.JSON)
 			if err != nil {
 				g.AddError(err)
 				return

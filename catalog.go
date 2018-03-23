@@ -161,7 +161,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 		version = fmt.Sprintf("%s-latest", coerceSeries(version))
 	}
 
-	if strings.Contasins(target, "auto") {
+	if strings.Contains(target, "auto") {
 		t, err := getDistro()
 		if err != nil {
 
@@ -171,7 +171,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 				target = runtime.GOOS
 			}
 
-			grip.Warning(message.WrapError(err, message.NewFormated("could not determine distro, falling back to %s", target)))
+			grip.Warning(message.WrapError(err, message.NewFormatted("could not determine distro, falling back to %s", target)))
 		} else {
 			target = t
 		}
