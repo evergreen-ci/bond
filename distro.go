@@ -7,12 +7,37 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+// GetTargetDistro attempts to discover the targeted distro name based
+// on the current environment and falls back to the generic builds for
+// a platform.
+//
+// In situations builds target a specific minor release of a platform
+// (and specify that version in their name) (e.g. debian and rhel),
+// the current platform must match the build
+// platform exactly.
+func GetTargetDistro() string {
+	t, err := getDistro()
+	if err != nil {
+		grip.Warning(message.WrapError(err, "could not determine distro, falling back to a generic build"))
+
+		if runtime.GOOS == "darwin" {
+			return "osx"
+		}
+
+		return runtime.GOOS
+	}
+
+	return t
+}
 
 func getDistro() (string, error) {
 	info, err := collectReleaseInfo()
