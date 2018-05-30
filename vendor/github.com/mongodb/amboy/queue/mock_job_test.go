@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
@@ -30,6 +31,13 @@ func (e *mockJobRunEnv) Count() int {
 	return e.runCount
 }
 
+func (e *mockJobRunEnv) Reset() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.runCount = 0
+}
+
 func init() {
 	mockJobCounters = &mockJobRunEnv{}
 	registry.AddJobType("mock", func() amboy.Job { return newMockJob() })
@@ -54,7 +62,7 @@ func newMockJob() *mockJob {
 	return j
 }
 
-func (j *mockJob) Run() {
+func (j *mockJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	mockJobCounters.Inc()

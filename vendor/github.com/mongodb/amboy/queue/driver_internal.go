@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -17,6 +18,7 @@ import (
 // a remote queue into a local-only architecture in a
 // dependency-injection situation.
 type driverInternal struct {
+	name string
 	jobs struct {
 		dispatched map[string]struct{}
 		pending    []string
@@ -29,18 +31,22 @@ type driverInternal struct {
 
 // NewInternalDriver creates a local persistence layer object.
 func NewInternalDriver() Driver {
-	d := &driverInternal{}
+	d := &driverInternal{
+		name: uuid.NewV4().String(),
+	}
 	d.jobs.m = make(map[string]amboy.Job)
 	d.jobs.dispatched = make(map[string]struct{})
 	return d
 }
+
+func (d *driverInternal) ID() string { return d.name }
 
 // Open is a noop for the driverInternal implementation, and exists to
 // satisfy the Driver interface.
 func (d *driverInternal) Open(ctx context.Context) error {
 	_, cancel := context.WithCancel(ctx)
 	d.closer = cancel
-	d.LockManager = NewLockManager(ctx, uuid.NewV4().String(), d)
+	d.LockManager = NewLockManager(ctx, d)
 
 	return nil
 }
@@ -133,6 +139,8 @@ func (d *driverInternal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 	name := j.ID()
 
 	if job, ok := d.jobs.m[name]; ok {
+		stat.ModificationTime = time.Now()
+		stat.ModificationCount++
 		job.SetStatus(stat)
 		d.jobs.m[name] = job
 		return nil

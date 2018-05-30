@@ -13,6 +13,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -117,22 +118,34 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 			case <-ctx.Done():
 				return
 			case job := <-jobs:
+				if job == nil {
+					continue
+				}
+
 				ti := amboy.JobTimeInfo{
 					Start: time.Now(),
 				}
+				job.UpdateTimeInfo(ti)
 
-				job.Run()
+				runJob(ctx, job)
+
+				// belt and suspenders
 				ti.End = time.Now()
 				job.UpdateTimeInfo(ti)
 
 				p.queue.Complete(ctx, job)
 
+				ti.End = time.Now()
+				job.UpdateTimeInfo(ti)
+
 				r := message.Fields{
 					"job":           job.ID(),
 					"job_type":      job.Type().Name,
 					"duration_secs": ti.Duration().Seconds(),
+					"queue_type":    fmt.Sprintf("%T", p.queue),
 					"pool":          "rate limiting",
 				}
+
 				if err := job.Error(); err != nil {
 					r["error"] = err.Error()
 				}
@@ -157,5 +170,13 @@ func (p *simpleRateLimited) Close() {
 	if p.canceler != nil {
 		p.canceler()
 	}
+
+	// because of the timer+2 contexts in the worker
+	// implementation, we can end up returning earlier and because
+	// pools are restartable, end up calling wait more than once,
+	// which doesn't affect behavior but does cause this to panic in
+	// tests
+	defer func() { recover() }()
+
 	p.wg.Wait()
 }
