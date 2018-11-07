@@ -1,11 +1,10 @@
 package gimlet
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Responder is an interface for constructing a response from a
@@ -48,6 +47,22 @@ type Responder interface {
 	// unpaginated response.
 	Pages() *ResponsePages
 	SetPages(*ResponsePages) error
+}
+
+func WriteResponse(rw http.ResponseWriter, resp Responder) {
+	// Write the response, based on the format specified.
+	switch resp.Format() {
+	case JSON:
+		WriteJSONResponse(rw, resp.Status(), resp.Data())
+	case TEXT:
+		WriteTextResponse(rw, resp.Status(), resp.Data())
+	case HTML:
+		WriteHTMLResponse(rw, resp.Status(), resp.Data())
+	case YAML:
+		WriteYAMLResponse(rw, resp.Status(), resp.Data())
+	case BINARY:
+		WriteBinaryResponse(rw, resp.Status(), resp.Data())
+	}
 }
 
 // NewResponseBuilder constructs a Responder implementation that can
@@ -106,7 +121,7 @@ func (r *responseBuilder) SetStatus(s int) error {
 
 func (r *responseBuilder) SetPages(p *ResponsePages) error {
 	if err := p.Validate(); err != nil {
-		return errors.Wrap(err, "cannot set an invalid page definition")
+		return fmt.Errorf("cannot set an invalid page definition: %s", err.Error())
 	}
 
 	r.pages = p
@@ -187,7 +202,7 @@ func (r *responderImpl) SetStatus(s int) error {
 
 func (r *responderImpl) SetPages(p *ResponsePages) error {
 	if err := p.Validate(); err != nil {
-		return errors.Wrap(err, "cannot set an invalid page definition")
+		return fmt.Errorf("cannot set an invalid page definition: %s", err.Error())
 	}
 
 	r.pages = p
