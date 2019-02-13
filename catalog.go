@@ -165,9 +165,17 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 	if strings.Contains(target, "auto") {
 		t, err := getDistro()
 		if err != nil {
-
 			if runtime.GOOS == "darwin" {
-				target = "osx"
+				major, minor, _, err := parseVersionParts(version)
+				if err != nil {
+					return "", errors.Wrap(err, "could not parse valid version")
+				}
+				// Before 4.1, OSX editions are "osx". However, starting in 4.1, OSX editions are "macos".
+				if major > 4 || major >= 4 && minor >= 1 {
+					target = "macos"
+				} else {
+					target = "osx"
+				}
 			} else {
 				target = runtime.GOOS
 			}
