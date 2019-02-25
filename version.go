@@ -2,7 +2,6 @@ package bond
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -36,35 +35,6 @@ func (version *ArtifactVersion) refresh() {
 	}
 }
 
-func parseVersionParts(version string) (major uint64, minor uint64, patch uint64, err error) {
-	versionParts := strings.SplitN(version, ".", 3)
-	if len(versionParts) != 3 {
-		err = errors.New("version must be in the form major.minor.patch")
-		return
-	}
-	major, err = strconv.ParseUint(versionParts[0], 10, 64)
-	if err != nil {
-		err = errors.Wrap(err, "could not parse major version")
-		return
-	}
-	minor, err = strconv.ParseUint(versionParts[1], 10, 64)
-	if err != nil {
-		err = errors.Wrap(err, "could not parse minor version")
-		return
-	}
-
-	patchStr := versionParts[2]
-	if hyphenIndex := strings.IndexRune(patchStr, '-'); hyphenIndex != -1 {
-		patchStr = patchStr[:hyphenIndex]
-	}
-	patch, err = strconv.ParseUint(patchStr, 10, 64)
-	if err != nil {
-		err = errors.Wrap(err, "could not parse patch version")
-		return
-	}
-	return major, minor, patch, nil
-}
-
 // GetDownload returns a matching ArtifactDownload object
 // given a BuildOptions object.
 func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload, error) {
@@ -78,14 +48,18 @@ func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload,
 		}
 	}
 
-	// For OSX, the edition depends on the major/minor version.
+	// For OSX, the target depends on the version. Before 4.1, OSX targets are
+	// "osx". However, starting in 4.1.1, OSX targets are "macos".
 	if key.Target == "osx" {
-		major, minor, _, err := parseVersionParts(version.Version)
+		parsedVersion, err := NewMongoDBVersion(version.Version)
 		if err != nil {
 			return ArtifactDownload{}, errors.Wrap(err, "could not parse version")
 		}
-		// Before 4.1, OSX editions are "osx". However, starting in 4.1, OSX editions are "macos".
-		if major > 4 || major >= 4 && minor >= 1 {
+		macosVersion, err := NewMongoDBVersion("4.1.1")
+		if err != nil {
+			return ArtifactDownload{}, errors.Wrap(err, "could not parse version for comparison")
+		}
+		if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
 			key.Target = "macos"
 		}
 	}
