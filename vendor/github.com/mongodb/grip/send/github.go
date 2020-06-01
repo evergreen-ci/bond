@@ -59,7 +59,7 @@ func (s *githubLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 			return
 		}
 
@@ -71,10 +71,12 @@ func (s *githubLogger) Send(m message.Composer) {
 
 		ctx := context.TODO()
 		if _, _, err := s.gh.Create(ctx, s.opts.Account, s.opts.Repo, issue); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
+
+func (s *githubLogger) Flush(_ context.Context) error { return nil }
 
 //////////////////////////////////////////////////////////////////////////
 //

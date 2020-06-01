@@ -20,12 +20,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 // LocalShuffled provides a queue implementation that shuffles the
@@ -37,6 +38,8 @@ type shuffledLocal struct {
 	capacity   int
 	id         string
 	starter    sync.Once
+	scopes     ScopeManager
+	dispatcher Dispatcher
 	runner     amboy.Runner
 }
 
@@ -44,10 +47,11 @@ type shuffledLocal struct {
 // order of jobs, relative the insertion order.
 func NewShuffledLocal(workers, capacity int) amboy.Queue {
 	q := &shuffledLocal{
+		scopes:   NewLocalScopeManager(),
 		capacity: capacity,
-		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.NewV4().String()),
+		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.New().String()),
 	}
-
+	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
 	return q
 }
@@ -97,7 +101,7 @@ func (q *shuffledLocal) reactor(ctx context.Context) {
 func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("cannot put job %s; queue not started", id)
 	}
 
@@ -121,7 +125,7 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		_, isDispatched := dispatched[id]
 
 		if isPending || isCompleted || isDispatched {
-			ret <- errors.Errorf("job '%s' already exists", id)
+			ret <- amboy.NewDuplicateJobErrorf("job '%s' already exists", id)
 		}
 
 		pending[id] = j
@@ -140,7 +144,7 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("cannot save job %s; queue not started", id)
 	}
 
@@ -181,7 +185,7 @@ func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
 // Get returns a job based on the specified ID. Considers all pending,
 // completed, and in progress jobs.
 func (q *shuffledLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
-	if !q.Started() {
+	if !q.Info().Started {
 		return nil, false
 	}
 
@@ -224,7 +228,7 @@ func (q *shuffledLocal) Get(ctx context.Context, name string) (amboy.Job, bool) 
 func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
-	if !q.Started() {
+	if !q.Info().Started {
 		close(output)
 		return output
 	}
@@ -298,7 +302,7 @@ func (q *shuffledLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo
 // Stats returns a standard report on the number of pending, running,
 // and completed jobs processed by the queue.
 func (q *shuffledLocal) Stats(ctx context.Context) amboy.QueueStats {
-	if !q.Started() {
+	if !q.Info().Started {
 		return amboy.QueueStats{}
 	}
 
@@ -329,11 +333,11 @@ func (q *shuffledLocal) Stats(ctx context.Context) amboy.QueueStats {
 	}
 }
 
-// Started returns true after the queue has started processing work,
-// and false otherwise. When the queue has terminated (as a result of
-// the starting context's cancellation.
-func (q *shuffledLocal) Started() bool {
-	return q.operations != nil
+func (q *shuffledLocal) Info() amboy.QueueInfo {
+	return amboy.QueueInfo{
+		Started:     q.operations != nil,
+		LockTimeout: amboy.LockTimeout,
+	}
 }
 
 // Next returns a new pending job, and is used by the Runner interface
@@ -356,6 +360,10 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
+			if err := q.scopes.Acquire(j.ID(), j.Scopes()); err != nil {
+				continue
+			}
+
 			select {
 			case <-ctx.Done():
 				return
@@ -371,7 +379,16 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 	case <-ctx.Done():
 		return nil
 	case q.operations <- op:
-		return <-ret
+		j := <-ret
+		if j == nil {
+			return nil
+		}
+		if err := q.dispatcher.Dispatch(ctx, j); err != nil {
+			_ = q.Put(ctx, j)
+			return nil
+		}
+
+		return j
 	}
 }
 
@@ -383,20 +400,14 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 		return
 	}
 
+	q.dispatcher.Complete(ctx, j)
 	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
 		toDelete *fixedStorage,
 	) {
-
 		id := j.ID()
-
-		if ctx.Err() != nil {
-			grip.Noticef("did not complete %s job, because operation "+
-				"was canceled.", id)
-			return
-		}
 
 		completed[id] = j
 		delete(dispatched, id)
@@ -407,6 +418,15 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 				delete(completed, toDelete.Pop())
 			}
 		}
+
+		grip.Warning(message.WrapError(
+			q.scopes.Release(j.ID(), j.Scopes()),
+			message.Fields{
+				"id":     j.ID(),
+				"scopes": j.Scopes(),
+				"queue":  q.ID(),
+				"op":     "releasing scope lock during completion",
+			}))
 	}
 
 	select {

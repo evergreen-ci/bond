@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// LockTimeout describes the period of time that a queue will respect
+// LockTimeout describes the default period of time that a queue will respect
 // a stale lock from another queue before beginning work on a job.
-const LockTimeout = 5 * time.Minute
+const LockTimeout = 10 * time.Minute
 
 // Job describes a unit of work. Implementations of Job instances are
 // the content of the Queue. The amboy/job package contains several
@@ -68,8 +68,22 @@ type Job interface {
 	// error. Typically if the job has not run, this is nil.
 	Error() error
 
-	Lock(string) error
-	Unlock(string)
+	// Lock and Unlock are responsible for handling the locking
+	// behavor for the job. Lock is responsible for setting the
+	// owner (its argument), incrementing the modification count
+	// and marking the job in progress, and returning an error if
+	// another worker has access to the job. Unlock is responsible
+	// for unsetting the owner and marking the job as
+	// not-in-progress, and should be a no-op if the job does not
+	// belong to the owner. In general the owner should be the value
+	// of queue.ID()
+	Lock(owner string, lockTimeout time.Duration) error
+	Unlock(owner string, lockTimeout time.Duration)
+
+	// Scope provides the ability to provide more configurable
+	// exclusion a job can provide.
+	Scopes() []string
+	SetScopes([]string)
 }
 
 // JobType contains information about the type of a job, which queues
@@ -169,9 +183,8 @@ type Queue interface {
 	// blocking, but may be interrupted with a canceled context.
 	Next(context.Context) Job
 
-	// Makes it possible to detect if a Queue has started
-	// dispatching jobs to runners.
-	Started() bool
+	// Info returns information related to management of the Queue.
+	Info() QueueInfo
 
 	// Used to mark a Job complete and remove it from the pending
 	// work of the queue.
@@ -179,7 +192,7 @@ type Queue interface {
 
 	// Saves the state of a current job to the underlying storage,
 	// generally in support of locking and incremental
-	// persistance. Should error if the job does not exist (use
+	// persistence. Should error if the job does not exist (use
 	// put,) or if the queue does not have ownership of the job.
 	Save(context.Context, Job) error
 
@@ -207,6 +220,12 @@ type Queue interface {
 	// Begins the execution of the job Queue, using the embedded
 	// Runner.
 	Start(context.Context) error
+}
+
+// QueueInfo describes runtime information associated with a Queue.
+type QueueInfo struct {
+	Started     bool
+	LockTimeout time.Duration
 }
 
 // QueueGroup describes a group of queues. Each queue is indexed by a

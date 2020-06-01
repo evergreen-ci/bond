@@ -51,7 +51,7 @@ func (s *SenderSuite) SetupTest() {
 		},
 	}
 
-	internal := new(InternalSender)
+	internal := MakeInternalLogger()
 	internal.name = "internal"
 	internal.output = make(chan *InternalMessage)
 	s.senders["internal"] = internal
@@ -139,7 +139,7 @@ func (s *SenderSuite) SetupTest() {
 
 	bufferedInternal, err := NewNativeLogger("buffered", l)
 	s.Require().NoError(err)
-	s.senders["buffered"] = NewBufferedSender(bufferedInternal, minBufferLength, 1)
+	s.senders["buffered"] = NewBufferedSender(bufferedInternal, minInterval, 1)
 
 	s.senders["github"], err = NewGithubIssuesLogger("gh", &GithubOptions{})
 	s.Require().NoError(err)
@@ -172,6 +172,14 @@ func (s *SenderSuite) SetupTest() {
 		ref:  "master",
 	}
 	s.NoError(s.senders["gh-status-mocked"].SetFormatter(MakeDefaultFormatter()))
+
+	annotatingBase, err := NewNativeLogger("async-one", l)
+	s.Require().NoError(err)
+	s.senders["annotating"] = NewAnnotatingSender(annotatingBase, map[string]interface{}{
+		"one":    1,
+		"true":   true,
+		"string": "string",
+	})
 
 	for _, size := range []int{1, 100, 10000, 1000000} {
 		name := fmt.Sprintf("inmemory-%d", size)
@@ -258,11 +266,11 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 
 		s.NoError(sender.SetLevel(LevelInfo{level.Debug, level.Alert}))
 		for _, l := range levels {
-			s.True(sender.Level().Valid(), string(n))
-			s.False(l.Valid(), string(n))
-			s.Error(sender.SetLevel(l), string(n))
-			s.True(sender.Level().Valid(), string(n))
-			s.NotEqual(sender.Level(), l, string(n))
+			s.True(sender.Level().Valid(), n)
+			s.False(l.Valid(), n)
+			s.Error(sender.SetLevel(l), n)
+			s.True(sender.Level().Valid(), n)
+			s.NotEqual(sender.Level(), l, n)
 		}
 
 	}
@@ -270,7 +278,7 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 
 func (s *SenderSuite) TestCloserShouldUsuallyNoop() {
 	for t, sender := range s.senders {
-		s.NoError(sender.Close(), string(t))
+		s.NoError(sender.Close(), t)
 	}
 }
 
@@ -303,7 +311,7 @@ func TestBaseConstructor(t *testing.T) {
 			assert.Error(s.SetFormatter(nil))
 			assert.Error(s.SetErrorHandler(nil))
 			assert.NoError(s.SetErrorHandler(handler))
-			s.ErrorHandler(errors.New("failed"), message.NewString("fated"))
+			s.ErrorHandler()(errors.New("failed"), message.NewString("fated"))
 		}
 	}
 

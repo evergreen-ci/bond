@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
@@ -71,10 +72,12 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 func (s *smtpLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		if err := s.opts.sendMail(m); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
+
+func (s *smtpLogger) Flush(_ context.Context) error { return nil }
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -329,7 +332,7 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	}
 
 	if err := o.client.Mail(fromAddr.Address); err != nil {
-		return fmt.Errorf("Error establishing mail sender (%s): %+v", fromAddr, err)
+		return fmt.Errorf("error establishing mail sender (%s): %+v", fromAddr, err)
 	}
 
 	var err error

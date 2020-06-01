@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,23 +31,23 @@ type buildlogger struct {
 // (e.g. logkeeper.)
 type BuildloggerConfig struct {
 	// CreateTest controls
-	CreateTest bool   `json:"create_test"`
-	URL        string `json:"url"`
+	CreateTest bool   `json:"create_test" bson:"create_test"`
+	URL        string `json:"url" bson:"url"`
 
 	// The following values are used by the buildlogger service to
 	// attach metadata to the logs. The GetBuildloggerConfig
 	// method populates Number, Phase, Builder, and Test from
 	// environment variables, though you can set them directly in
 	// your application. You must set the Command value directly.
-	Number  int    `json:"number"`
-	Phase   string `json:"phase"`
-	Builder string `json:"builder"`
-	Test    string `json:"test"`
-	Command string `json:"command"`
+	Number  int    `json:"number" bson:"number"`
+	Phase   string `json:"phase" bson:"phase"`
+	Builder string `json:"builder" bson:"builder"`
+	Test    string `json:"test" bson:"test"`
+	Command string `json:"command" bson:"command"`
 
 	// Configure a local sender for "fallback" operations and to
 	// collect the location (URLS) of the buildlogger output
-	Local Sender `json:"-"`
+	Local Sender `json:"-" bson:"-"`
 
 	buildID  string
 	testID   string
@@ -163,10 +164,12 @@ func (c *BuildloggerConfig) GetTestLogURL() string {
 	return fmt.Sprintf("%s/build/%s/test/%s", c.URL, c.buildID, c.testID)
 }
 
+// GetBuildID returns the build ID for the log currently in use.
 func (c *BuildloggerConfig) GetBuildID() string {
 	return c.buildID
 }
 
+// GetTestID returns the test ID for the log currently in use.
 func (c *BuildloggerConfig) GetTestID() string {
 	return c.testID
 }
@@ -270,10 +273,12 @@ func (b *buildlogger) Send(m message.Composer) {
 		}
 
 		if err := b.postLines(bytes.NewBuffer(out)); err != nil {
-			b.ErrorHandler(err, message.NewBytesMessage(b.level.Default, out))
+			b.ErrorHandler()(err, message.NewBytesMessage(b.level.Default, out))
 		}
 	}
 }
+
+func (b *buildlogger) Flush(_ context.Context) error { return nil }
 
 func (b *buildlogger) SetName(n string) {
 	b.conf.Local.SetName(n)

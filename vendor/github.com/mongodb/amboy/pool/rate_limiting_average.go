@@ -114,8 +114,17 @@ func (p *ewmaRateLimiting) getNextTime(dur time.Duration) time.Duration {
 	return (excessTime / time.Duration(p.target))
 }
 
-func (p *ewmaRateLimiting) Started() bool { return p.canceler != nil }
+func (p *ewmaRateLimiting) Started() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return p.canceler != nil
+}
+
 func (p *ewmaRateLimiting) Start(ctx context.Context) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.canceler != nil {
 		return nil
 	}
@@ -125,18 +134,17 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 
 	ctx, p.canceler = context.WithCancel(ctx)
 
-	jobs := startWorkerServer(ctx, p.queue, &p.wg)
-
 	for w := 1; w <= p.size; w++ {
-		go p.worker(ctx, jobs)
+		go p.worker(ctx)
 	}
 	return nil
 }
 
-func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *ewmaRateLimiting) worker(bctx context.Context) {
 	var (
 		err    error
 		job    amboy.Job
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 
@@ -152,7 +160,7 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 				job.AddError(err)
 			}
 			// start a replacement worker.
-			go p.worker(ctx, jobs)
+			go p.worker(bctx)
 		}
 		if cancel != nil {
 			cancel()
@@ -163,21 +171,20 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 	defer timer.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
 		case <-timer.C:
-			select {
-			case <-ctx.Done():
-				return
-			case wu := <-jobs:
-				cancel = wu.cancel
-				job = wu.job
-
-				interval := p.runJob(ctx, job)
-				cancel()
-
-				timer.Reset(interval)
+			job := p.queue.Next(bctx)
+			if job == nil {
+				timer.Reset(jitterNilJobWait())
+				continue
 			}
+
+			ctx, cancel = context.WithCancel(bctx)
+			interval := p.runJob(ctx, job)
+			cancel()
+
+			timer.Reset(interval)
 		}
 	}
 }
@@ -190,6 +197,9 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
+	ti := j.TimeInfo()
+	ti.Start = time.Now()
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	p.addCanceler(j.ID(), cancel)
@@ -202,8 +212,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	}()
 
 	executeJob(ctx, "rate-limited-average", j, p.queue)
+	ti.End = time.Now()
 
-	return j.TimeInfo().Duration()
+	return ti.Duration()
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {
@@ -240,7 +251,7 @@ func (p *ewmaRateLimiting) Close(ctx context.Context) {
 	// pools are restartable, end up calling wait more than once,
 	// which doesn't affect behavior but does cause this to panic in
 	// tests
-	defer func() { recover() }()
+	defer func() { _ = recover() }()
 	wait := make(chan struct{})
 	go func() {
 		defer recovery.LogStackTraceAndContinue("waiting for close")

@@ -140,3 +140,6 @@ func (s *QueueService) waitForJob(ctx context.Context, name string) (*jobStatusR
 
 	return response, http.StatusOK, nil
 }
+
+func (s *QueueService) markTypeCompleteLocal(jobType string) {
+}

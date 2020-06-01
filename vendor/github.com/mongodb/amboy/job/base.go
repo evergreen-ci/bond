@@ -34,8 +34,9 @@ import (
 // an implementation of most common Job methods which most jobs
 // need not implement themselves.
 type Base struct {
-	TaskID  string        `bson:"name" json:"name" yaml:"name"`
-	JobType amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
+	TaskID         string        `bson:"name" json:"name" yaml:"name"`
+	JobType        amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
+	RequiredScopes []string      `bson:"required_scopes" json:"required_scopes" yaml:"required_scopes"`
 
 	priority int
 	timeInfo amboy.JobTimeInfo
@@ -110,11 +111,11 @@ func (b *Base) ID() string {
 // uniquely identify the runtime instance of the queue that holds the
 // lock, and the method returns an error if the lock cannot be
 // acquired.
-func (b *Base) Lock(id string) error {
+func (b *Base) Lock(id string, lockTimeout time.Duration) error {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if b.status.InProgress && time.Since(b.status.ModificationTime) < amboy.LockTimeout && b.status.Owner != id {
+	if b.status.InProgress && time.Since(b.status.ModificationTime) < lockTimeout && b.status.Owner != id {
 		return errors.Errorf("cannot take lock for '%s' because lock has been held for %s by %s",
 			id, time.Since(b.status.ModificationTime), b.status.Owner)
 	}
@@ -127,11 +128,11 @@ func (b *Base) Lock(id string) error {
 
 // Unlock attempts to remove the current lock state in the job, if
 // possible.
-func (b *Base) Unlock(id string) {
+func (b *Base) Unlock(id string, lockTimeout time.Duration) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if b.status.InProgress && time.Since(b.status.ModificationTime) < amboy.LockTimeout && b.status.Owner != id {
+	if b.status.InProgress && time.Since(b.status.ModificationTime) < lockTimeout && b.status.Owner != id {
 		return
 	}
 
@@ -253,4 +254,31 @@ func (b *Base) UpdateTimeInfo(i amboy.JobTimeInfo) {
 	if i.MaxTime != 0 {
 		b.timeInfo.MaxTime = i.MaxTime
 	}
+}
+
+// SetScopes overrides the jobs current scopes with those from the
+// argument. To unset scopes, pass nil to this method.
+func (b *Base) SetScopes(scopes []string) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if len(scopes) == 0 {
+		b.RequiredScopes = nil
+		return
+	}
+
+	b.RequiredScopes = scopes
+}
+
+// Scopes returns the required scopes for the job.
+func (b *Base) Scopes() []string {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	if len(b.RequiredScopes) == 0 {
+		return nil
+	}
+
+	return b.RequiredScopes
+
 }

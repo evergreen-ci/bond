@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -56,7 +57,9 @@ func (s *streamLogger) Send(m message.Composer) {
 		}
 
 		if _, err := s.fobj.WriteString(msg); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
+
+func (s *streamLogger) Flush(_ context.Context) error { return nil }

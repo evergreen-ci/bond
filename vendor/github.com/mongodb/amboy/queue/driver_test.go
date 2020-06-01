@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
-	"github.com/satori/go.uuid"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,8 +20,8 @@ import (
 
 type DriverSuite struct {
 	uuid              string
-	driver            Driver
-	driverConstructor func() Driver
+	driver            remoteQueueDriver
+	driverConstructor func() remoteQueueDriver
 	tearDown          func()
 	ctx               context.Context
 	cancel            context.CancelFunc
@@ -28,39 +30,19 @@ type DriverSuite struct {
 
 // Each driver should invoke this suite:
 
-func TestDriverSuiteWithLocalInstance(t *testing.T) {
-	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
-	tests.driverConstructor = func() Driver {
-		return NewInternalDriver()
-	}
-
-	suite.Run(t, tests)
-}
-
-func TestDriverSuiteWithPriorityInstance(t *testing.T) {
-	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
-	tests.driverConstructor = func() Driver {
-		return NewPriorityDriver()
-	}
-
-	suite.Run(t, tests)
-}
-
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
+	tests.uuid = uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	mDriver := NewMongoDriver(
-		"test-"+tests.uuid,
-		opts).(*mongoDriver)
+	driver, err := newMongoDriver("test-"+tests.uuid, opts)
+	require.NoError(t, err)
+	mDriver := driver.(*mongoDriver)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tests.driverConstructor = func() Driver {
+	tests.driverConstructor = func() remoteQueueDriver {
 		return mDriver
 	}
 
@@ -114,7 +96,9 @@ func (s *DriverSuite) TestPutJobDoesNotAllowDuplicateIds() {
 	s.NoError(err)
 
 	for i := 0; i < 10; i++ {
-		s.Error(s.driver.Put(ctx, j))
+		err := s.driver.Put(ctx, j)
+		s.Error(err)
+		s.True(amboy.IsDuplicateJobError(err))
 	}
 }
 
@@ -207,30 +191,7 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	s.Equal(0, s.driver.Stats(s.ctx).Running)
 }
 
-func (s *DriverSuite) TestNextMethodReturnsJob() {
-	s.Equal(0, s.driver.Stats(s.ctx).Total)
-
-	j := job.NewShellJob("echo foo", "")
-
-	s.NoError(s.driver.Put(s.ctx, j))
-	stats := s.driver.Stats(s.ctx)
-	s.Equal(1, stats.Total, "%+v", stats)
-	s.Equal(1, stats.Pending)
-
-	nj := s.driver.Next(s.ctx)
-	stats = s.driver.Stats(s.ctx)
-	s.Equal(0, stats.Completed)
-	s.Equal(1, stats.Pending)
-	s.Equal(0, stats.Blocked)
-	s.Equal(0, stats.Running)
-
-	if s.NotNil(nj) {
-		s.Equal(j.ID(), nj.ID())
-		s.NoError(j.Lock(s.driver.ID()))
-	}
-}
-
-func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
+func (s *DriverSuite) TestNextMethodSkipsCompletedJobs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	j := job.NewShellJob("echo foo", "")
@@ -243,6 +204,21 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
 	s.Equal(0, s.driver.Stats(s.ctx).Pending)
 	s.Equal(1, s.driver.Stats(s.ctx).Completed)
+
+	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
+}
+
+func (s *DriverSuite) TestNextMethodDoesNotReturnLastJob() {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	j := job.NewShellJob("echo foo", "")
+	s.Require().NoError(j.Lock("taken", amboy.LockTimeout))
+
+	s.NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(1, s.driver.Stats(s.ctx).Pending)
+	s.Equal(0, s.driver.Stats(s.ctx).Completed)
 
 	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
 }
@@ -292,4 +268,16 @@ func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
 	}
 	s.Equal(len(names), counter)
 	s.Equal(counter, 30)
+}
+
+func (s *DriverSuite) TestReturnsDefaultLockTimeout() {
+	s.Equal(amboy.LockTimeout, s.driver.LockTimeout())
+}
+
+func (s *DriverSuite) TestInfoReturnsConfigurableLockTimeout() {
+	opts := DefaultMongoDBOptions()
+	opts.LockTimeout = 25 * time.Minute
+	d, err := newMongoDriver(s.T().Name(), opts)
+	s.Require().NoError(err)
+	s.Equal(opts.LockTimeout, d.LockTimeout())
 }

@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -72,16 +73,18 @@ func (s *sumoLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 			return
 		}
 
 		buf := []byte(text)
 		if err := s.client.Send(buf, s.name); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
+
+func (s *sumoLogger) Flush(_ context.Context) error { return nil }
 
 ////////////////////////////////////////////////////////////////////////
 //

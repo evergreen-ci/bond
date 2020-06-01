@@ -3,6 +3,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/syslog"
@@ -42,14 +43,14 @@ func MakeSysLogger(network, raddr string) Sender {
 
 		if s.logger != nil {
 			if err := s.logger.Close(); err != nil {
-				s.ErrorHandler(err, message.NewErrorWrapMessage(level.Error, err,
+				s.ErrorHandler()(err, message.NewErrorWrapMessage(level.Error, err,
 					"problem closing syslogger"))
 			}
 		}
 
 		w, err := syslog.Dial(network, raddr, syslog.LOG_DEBUG, s.Name())
 		if err != nil {
-			s.ErrorHandler(err, message.NewErrorWrapMessage(level.Error, err,
+			s.ErrorHandler()(err, message.NewErrorWrapMessage(level.Error, err,
 				"error restarting syslog [%s] for logger: %s", err.Error(), s.Name()))
 			return
 		}
@@ -78,13 +79,13 @@ func (s *syslogger) Close() error { return s.logger.Close() }
 func (s *syslogger) Send(m message.Composer) {
 	defer func() {
 		if err := recover(); err != nil {
-			s.ErrorHandler(fmt.Errorf("panic: %v", err), m)
+			s.ErrorHandler()(fmt.Errorf("panic: %v", err), m)
 		}
 	}()
 
 	if s.Level().ShouldLog(m) {
 		if err := s.sendToSysLog(m.Priority(), m.String()); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
@@ -111,3 +112,5 @@ func (s *syslogger) sendToSysLog(p level.Priority, message string) error {
 
 	return fmt.Errorf("encountered error trying to send: {%s}. Possibly, priority related", message)
 }
+
+func (s *syslogger) Flush(_ context.Context) error { return nil }

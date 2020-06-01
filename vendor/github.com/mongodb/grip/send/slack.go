@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -97,11 +98,13 @@ func (s *slackJournal) Send(m message.Composer) {
 		}
 
 		if err := s.opts.client.ChatPostMessage(channel, msg, params); err != nil {
-			s.ErrorHandler(err, message.NewFormattedMessage(m.Priority(),
+			s.ErrorHandler()(err, message.NewFormattedMessage(m.Priority(),
 				"%s\n", msg))
 		}
 	}
 }
+
+func (s *slackJournal) Flush(_ context.Context) error { return nil }
 
 // SlackOptions configures the behavior for constructing messages sent
 // to slack.
@@ -186,7 +189,7 @@ func (o *SlackOptions) Validate() error {
 	}
 
 	if !strings.HasPrefix(o.Channel, "#") && !strings.HasPrefix(o.Channel, "@") {
-		return errors.New("Recipient must begin with '#' or '@'")
+		return errors.New("recipient must begin with '#' or '@'")
 	}
 
 	if len(errs) > 0 {

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type QueueTester struct {
@@ -37,7 +37,7 @@ func NewQueueTesterInstance() *QueueTester {
 	return &QueueTester{
 		toProcess: make(chan amboy.Job, 101),
 		storage:   make(map[string]amboy.Job),
-		id:        uuid.NewV4().String(),
+		id:        uuid.New().String(),
 	}
 }
 
@@ -76,11 +76,14 @@ func (q *QueueTester) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	return job, ok
 }
 
-func (q *QueueTester) Started() bool {
+func (q *QueueTester) Info() amboy.QueueInfo {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	return q.started
+	return amboy.QueueInfo{
+		Started:     q.started,
+		LockTimeout: amboy.LockTimeout,
+	}
 }
 
 func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) {
@@ -107,7 +110,7 @@ func (q *QueueTester) Runner() amboy.Runner {
 }
 
 func (q *QueueTester) SetRunner(r amboy.Runner) error {
-	if q.Started() {
+	if q.Info().Started {
 		return errors.New("cannot set runner in a started pool")
 	}
 	q.pool = r
@@ -124,7 +127,7 @@ func (q *QueueTester) Next(ctx context.Context) amboy.Job {
 }
 
 func (q *QueueTester) Start(ctx context.Context) error {
-	if q.Started() {
+	if q.Info().Started {
 		return nil
 	}
 
@@ -187,8 +190,8 @@ func (j *jobThatPanics) Run(_ context.Context) {
 	panic("panic err")
 }
 
-func jobsChanWithPanicingJobs(ctx context.Context, num int) <-chan workUnit {
-	out := make(chan workUnit)
+func jobsChanWithPanicingJobs(ctx context.Context, num int) chan amboy.Job {
+	out := make(chan amboy.Job)
 
 	go func() {
 		defer close(out) // nolint
@@ -201,7 +204,7 @@ func jobsChanWithPanicingJobs(ctx context.Context, num int) <-chan workUnit {
 			select {
 			case <-ctx.Done():
 				return
-			case out <- workUnit{job: &jobThatPanics{}, cancel: func() {}}:
+			case out <- &jobThatPanics{}:
 				count++
 			}
 		}

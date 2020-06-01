@@ -38,58 +38,6 @@ func TestLocalOrderedQueueSuiteThreeWorker(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
-	s := &OrderedQueueSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	s.size = 4
-
-	s.reset = func() {
-		d := NewPriorityDriver()
-		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		s.Require().NotNil(remote.remoteBase)
-		s.Require().NoError(d.Open(ctx))
-		s.Require().NoError(remote.SetDriver(d))
-		s.queue = remote
-	}
-
-	s.setup = func() {
-		s.reset()
-	}
-
-	s.tearDown = func() {
-		cancel()
-	}
-
-	suite.Run(t, s)
-}
-
-func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
-	s := &OrderedQueueSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	s.size = 4
-
-	s.reset = func() {
-		d := NewInternalDriver()
-		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		s.Require().NotNil(remote.remoteBase)
-		s.Require().NoError(d.Open(ctx))
-		s.Require().NoError(remote.SetDriver(d))
-		s.queue = remote
-	}
-
-	s.setup = func() {
-		s.reset()
-	}
-
-	s.tearDown = func() {
-		cancel()
-	}
-
-	suite.Run(t, s)
-}
-
 func (s *OrderedQueueSuite) SetupTest() {
 	if s.setup != nil {
 		s.setup()
@@ -163,9 +111,9 @@ func (s *OrderedQueueSuite) TestInternalRunnerCannotBeChangedAfterStartingAQueue
 	defer cancel()
 
 	runner := s.queue.Runner()
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	newRunner := pool.NewLocalWorkers(2, s.queue)
 	s.Error(s.queue.SetRunner(newRunner))
@@ -195,17 +143,17 @@ func (s *OrderedQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	amboy.Wait(ctx, s.queue)
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	// you can call start more than once until the queue has
 	// completed
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 }
 
 func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {

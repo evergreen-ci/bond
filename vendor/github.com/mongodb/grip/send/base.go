@@ -1,11 +1,11 @@
 package send
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 // Base provides most of the functionality of the Sender interface,
@@ -13,9 +13,10 @@ import (
 // implementations. All implementations of the functions
 type Base struct {
 	// data exposed via the interface and tools to track them
-	name  string
-	level LevelInfo
-	mutex sync.RWMutex
+	name   string
+	level  LevelInfo
+	mutex  sync.RWMutex
+	closed bool
 
 	// function literals which allow customizable functionality.
 	// they are set either in the constructor (e.g. MakeBase) of
@@ -47,8 +48,24 @@ func MakeBase(n string, reseter func(), closer func() error) *Base {
 	return b
 }
 
-// Close calls the closer function.
-func (b *Base) Close() error { return b.closer() }
+// Close calls the closer function if it is defined and it has not already been
+// closed.
+func (b *Base) Close() error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if b.closed {
+		return nil
+	}
+
+	if b.closer != nil {
+		if err := b.closer(); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	b.closed = true
+	return nil
+}
 
 // Name returns the name of the Sender.
 func (b *Base) Name() string {
@@ -82,15 +99,17 @@ func (b *Base) SetFormatter(mf MessageFormatter) error {
 
 // Formatter returns the formatter, defaulting to using the string
 // form of the message if no formatter is configured.
-func (b *Base) Formatter(m message.Composer) (string, error) {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
+func (b *Base) Formatter() MessageFormatter {
+	return func(m message.Composer) (string, error) {
+		b.mutex.RLock()
+		defer b.mutex.RUnlock()
 
-	if b.formatter == nil {
-		return m.String(), nil
+		if b.formatter == nil {
+			return m.String(), nil
+		}
+
+		return b.formatter(m)
 	}
-
-	return b.formatter(m)
 }
 
 // SetErrorHandler configures the error handling function for this Sender.
@@ -106,13 +125,19 @@ func (b *Base) SetErrorHandler(eh ErrorHandler) error {
 	return nil
 }
 
-// ErrorHandler calls the error handler, and is a wrapper around the
-// embedded ErrorHandler function. It is not part of the Sender interface.
-func (b *Base) ErrorHandler(err error, m message.Composer) {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
+// ErrorHandler returns an error handling functioncalls the error handler, and is a wrapper around the
+// embedded ErrorHandler function.
+func (b *Base) ErrorHandler() ErrorHandler {
+	return func(err error, m message.Composer) {
+		if err == nil {
+			return
+		}
 
-	b.errHandler(err, m)
+		b.mutex.RLock()
+		defer b.mutex.RUnlock()
+
+		b.errHandler(err, m)
+	}
 }
 
 // SetLevel configures the level (default levels and threshold levels)

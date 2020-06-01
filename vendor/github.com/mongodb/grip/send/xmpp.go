@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -134,7 +135,7 @@ func (s *xmppLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 			return
 		}
 
@@ -145,10 +146,12 @@ func (s *xmppLogger) Send(m message.Composer) {
 		}
 
 		if _, err := s.info.client.Send(c); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
+
+func (s *xmppLogger) Flush(_ context.Context) error { return nil }
 
 ////////////////////////////////////////////////////////////////////////
 //
