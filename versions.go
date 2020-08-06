@@ -94,7 +94,7 @@ func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 
 	parsed, err := semver.Parse(toParse)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error parsing %s'", toParse)
 	}
 	if parsed.LT(endOfLegacyVersion) {
 		return createLegacyMongoDBVersion(version)
@@ -131,7 +131,7 @@ func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 
 	parsed, err := semver.Parse(version)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error parsing '%s'", version)
 	}
 	v.parsed = parsed
 
