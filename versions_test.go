@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// VersionSuite contains tests of both the LegacyMongoDBVersion
+// VersionSuite contains tests of both the MongoDBVersion
 // representation and the MongoDBVersionSlice type which implements
 // the sort.Sorter interface. These tests confirm that the
 // CreateMongoDBVersion constructor is capable of validating MongoDB
@@ -81,6 +81,7 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 	for _, version := range rcs {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsReleaseCandidate(), v.String())
 	}
 
@@ -100,6 +101,7 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 	for _, version := range notRcs {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.False(v.IsReleaseCandidate())
 		s.False(v.IsInitialStableReleaseCandidate())
 	}
@@ -127,6 +129,7 @@ func (s *VersionSuite) TestReleaseSeriesDetection() {
 	for _, value := range values {
 		v, err := CreateMongoDBVersion(value.input)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.Equal(v.Series(), value.expected)
 	}
 }
@@ -145,6 +148,7 @@ func (s *VersionSuite) TestStableAndDevReleaseSeriesAttributes() {
 	for _, version := range versions {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsStableSeries())
 		s.False(v.IsDevelopmentSeries())
 	}
@@ -162,6 +166,7 @@ func (s *VersionSuite) TestStableAndDevReleaseSeriesAttributes() {
 	for _, version := range devVersion {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsDevelopmentSeries())
 		s.False(v.IsStableSeries())
 	}
@@ -181,6 +186,7 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 	for _, version := range releases {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsRelease())
 		s.False(v.IsDevelopmentBuild())
 	}
@@ -195,6 +201,7 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 	for _, version := range builds {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsDevelopmentBuild())
 		s.False(v.IsRelease())
 	}
@@ -216,6 +223,7 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 	for _, version := range releases {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsReleaseCandidate())
 		s.True(v.IsInitialStableReleaseCandidate(), version)
 	}
@@ -233,6 +241,7 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 	for _, version := range otherRcs {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsReleaseCandidate())
 		s.False(v.IsInitialStableReleaseCandidate())
 	}
@@ -258,6 +267,7 @@ func (s *VersionSuite) TestSortingVersions() {
 		for _, input := range value.input {
 			version, err := CreateMongoDBVersion(input)
 			s.NoError(err)
+			s.Require().NotNil(version)
 			v = append(v, version)
 		}
 
@@ -281,6 +291,7 @@ func (s *VersionSuite) TestVersionSliceStringFormating() {
 	for i, v := range versions {
 		ver, err := CreateMongoDBVersion(v)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		slice[i] = ver
 	}
 
@@ -297,8 +308,9 @@ func (s *VersionSuite) TestParsingIdentifiesRCForRCs() {
 
 	for version, rcNumber := range cases {
 		v, err := CreateMongoDBVersion(version)
-		s.Require().NoError(err)
-		s.Equal(v.RcNumber(), rcNumber)
+		s.NoError(err)
+		s.Require().NotNil(v)
+		s.Equal(v.RCNumber(), rcNumber)
 	}
 
 }
@@ -312,7 +324,8 @@ func (s *VersionSuite) TestRCNumberIsLessThanZeroForNonRCs() {
 	for _, version := range cases {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
-		s.True(v.RcNumber() < 0)
+		s.Require().NotNil(v)
+		s.True(v.RCNumber() < 0)
 	}
 }
 
@@ -322,6 +335,7 @@ func (s *VersionSuite) TestVersionConversionProducesExpectedVersionObjectsWithou
 	// should convert a string to a version object.
 	vString, err := ConvertVersion(expectedVersion)
 	s.NoError(err)
+	s.Require().NotNil(vString)
 	s.Equal(vString.String(), expectedVersion)
 
 	// pass a pointer to a version object the converter
@@ -332,14 +346,16 @@ func (s *VersionSuite) TestVersionConversionProducesExpectedVersionObjectsWithou
 	// pass a legacy version object itself rather than a ref.
 	vVersionLegacy, ok := vVersionPointer.(*LegacyMongoDBVersion)
 	s.True(ok)
-	s.NotNil(vVersionLegacy)
+	s.Require().NotNil(vVersionLegacy)
 	vVersionObj, err := ConvertVersion(*vVersionLegacy)
 	s.NoError(err)
+	s.Require().NotNil(vVersionObj)
 	s.Equal(vVersionObj.String(), expectedVersion)
 
 	// try a smevar.Version object
 	vSemVar, err := ConvertVersion(vVersionObj.Parsed())
 	s.NoError(err)
+	s.Require().NotNil(vSemVar)
 	s.Equal(vSemVar.String(), expectedVersion)
 }
 
@@ -369,6 +385,7 @@ func (s *VersionSuite) TestLessThanComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsLessThan(s.baseVersion))
@@ -400,6 +417,7 @@ func (s *VersionSuite) TestLessThanOrEqualToComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsLessThanOrEqualTo(s.baseVersion))
@@ -434,6 +452,7 @@ func (s *VersionSuite) TestGreaterThanComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsGreaterThan(s.baseVersion))
@@ -464,6 +483,7 @@ func (s *VersionSuite) TestGreaterThanOrEqualToComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsGreaterThanOrEqualTo(s.baseVersion))
@@ -494,6 +514,7 @@ func (s *VersionSuite) TestVersionEqualityOperators() {
 	for version, isEqual := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if isEqual {
 			s.True(v.IsEqualTo(s.baseVersion))

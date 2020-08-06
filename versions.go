@@ -1,7 +1,7 @@
 /*
 MongoDB Versions
 
-The LegacyMongoDBVersion type provides support for interacting with MongoDB
+The MongoDBVersion type provides support for interacting with MongoDB
 versions. This type makes it possible to validate MongoDB version
 numbers and ask common questions about MongoDB versions.
 */
@@ -19,7 +19,7 @@ import (
 
 const endOfLegacy = "4.5.0"
 
-// MongoDBVersion encapsulates information about a MongoDBVersion.
+// MongoDBVersion encapsulates information about a MongoDB version.
 // Use the associated methods to ask questions about MongoDB
 // versions. All parsing of versions happens during construction, and
 // individual method calls are very light-weight. Note that
@@ -27,11 +27,11 @@ const endOfLegacy = "4.5.0"
 type MongoDBVersion interface {
 	// String returns a string representation of the MongoDB version number.
 	String() string
-	// Parsed returns the parsed version object for the version
+	// Parsed returns the parsed version object for the version.
 	Parsed() semver.Version
 	// Series returns the release series for legacy versions.
 	Series() string
-	// IsReleaseCandidate returns true if the version is a release candidate.
+	// IsReleaseCandidate returns true if the legacy version is a release candidate.
 	IsReleaseCandidate() bool
 	// IsStableSeries returns true if the legacy version is a stable series.
 	IsStableSeries() bool
@@ -46,8 +46,8 @@ type MongoDBVersion interface {
 	// IsInitialStableReleaseCandidate returns true if the legacy version is a release
 	// candidate for the initial release of a stable series.
 	IsInitialStableReleaseCandidate() bool
-	// RcNumber returns the RC counter (or -1 if not a release candidate)
-	RcNumber() int
+	// RCNumber returns the RC counter (or -1 if not a release candidate)
+	RCNumber() int
 
 	IsLessThan(version MongoDBVersion) bool
 	IsLessThanOrEqualTo(version MongoDBVersion) bool
@@ -76,6 +76,9 @@ type NewMongoDBVersion struct {
 	LegacyMongoDBVersion
 }
 
+// CreateMongoDBVersion returns an implementation of the MongoDBVersion.
+// If the parsed version is before 4.5.0, then we use the legacy structure.
+// Otherwise, we use the modern versioning scheme.
 func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 	endOfLegacyVersion, _ := semver.Parse(endOfLegacy)
 
@@ -99,15 +102,16 @@ func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 	return createNewMongoDBVersion(version)
 }
 
+
+// createNewMongoDBVersion takes a string representing a MongoDBVersion and
+// returns a NewMongoDBVersion object. All parsing of a version happens during this phase.
 func createNewMongoDBVersion(version string) (*NewMongoDBVersion, error) {
 	return nil, errors.New("not yet implemented")
 }
 
 
-// CreateMongoDBVersion takes a string representing a MongoDB version and
-// returns a LegacyMongoDBVersion object. If the input string is not a valid
-// version, or there were problems parsing the string, the error value
-// is non-nil. All parsing of a version happens during this phase.
+// createLegacyMongoDBVersion takes a string representing a MongoDB version and
+// returns a LegacyMongoDBVersion object. All parsing of a version happens during this phase.
 func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 	v := &LegacyMongoDBVersion{source: version, rcNumber: -1}
 	if strings.HasSuffix(version, "-") {
@@ -190,6 +194,7 @@ func (v *LegacyMongoDBVersion) String() string {
 	return v.source
 }
 
+// Parsed returns the parsed version object for the version.
 func (v *LegacyMongoDBVersion) Parsed() semver.Version {
 	return v.parsed
 }
@@ -263,9 +268,9 @@ func (v *LegacyMongoDBVersion) IsInitialStableReleaseCandidate() bool {
 	return false
 }
 
-// RcNumber returns an integer for the RC counter. For non-rc releases,
+// RCNumber returns an integer for the RC counter. For non-rc releases,
 // returns -1.
-func (v *LegacyMongoDBVersion) RcNumber() int {
+func (v *LegacyMongoDBVersion) RCNumber() int {
 	return v.rcNumber
 }
 
