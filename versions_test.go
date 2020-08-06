@@ -11,11 +11,11 @@ import (
 // VersionSuite contains tests of both the MongoDBVersion
 // representation and the MongoDBVersionSlice type which implements
 // the sort.Sorter interface. These tests confirm that the
-// NewMongoDBVersion constructor is capable of validating MongoDB
+// CreateMongoDBVersion constructor is capable of validating MongoDB
 // versions, and that methods associated with report the expected
 // properties for a given version string.
 type VersionSuite struct {
-	baseVersion *MongoDBVersion
+	baseVersion MongoDBVersion
 	suite.Suite
 }
 
@@ -24,7 +24,7 @@ func TestVersionSuite(t *testing.T) {
 }
 
 func (s *VersionSuite) SetupSuite() {
-	base, err := NewMongoDBVersion("3.2.6")
+	base, err := CreateMongoDBVersion("3.2.6")
 	s.NoError(err)
 	s.baseVersion = base
 }
@@ -43,7 +43,7 @@ func (s *VersionSuite) TestValidVersionsParseWithoutErrors() {
 		"3.0.1-pre-",
 	}
 	for _, version := range versions {
-		_, err := NewMongoDBVersion(version)
+		_, err := CreateMongoDBVersion(version)
 		s.NoError(err)
 	}
 }
@@ -63,7 +63,7 @@ func (s *VersionSuite) TestInvalidVersionsHaveParseErrors() {
 	}
 
 	for _, version := range versions {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.Error(err)
 		s.Nil(v)
 	}
@@ -79,9 +79,10 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 	}
 
 	for _, version := range rcs {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
-		s.True(v.IsReleaseCandidate(), v.source)
+		s.Require().NotNil(v)
+		s.True(v.IsReleaseCandidate(), v.String())
 	}
 
 	notRcs := []string{
@@ -98,8 +99,9 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 	}
 
 	for _, version := range notRcs {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.False(v.IsReleaseCandidate())
 		s.False(v.IsInitialStableReleaseCandidate())
 	}
@@ -125,8 +127,9 @@ func (s *VersionSuite) TestReleaseSeriesDetection() {
 	}
 
 	for _, value := range values {
-		v, err := NewMongoDBVersion(value.input)
+		v, err := CreateMongoDBVersion(value.input)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.Equal(v.Series(), value.expected)
 	}
 }
@@ -143,8 +146,9 @@ func (s *VersionSuite) TestStableAndDevReleaseSeriesAttributes() {
 	}
 
 	for _, version := range versions {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsStableSeries())
 		s.False(v.IsDevelopmentSeries())
 	}
@@ -160,8 +164,9 @@ func (s *VersionSuite) TestStableAndDevReleaseSeriesAttributes() {
 	}
 
 	for _, version := range devVersion {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsDevelopmentSeries())
 		s.False(v.IsStableSeries())
 	}
@@ -179,8 +184,9 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 	}
 
 	for _, version := range releases {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsRelease())
 		s.False(v.IsDevelopmentBuild())
 	}
@@ -193,8 +199,9 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 	}
 
 	for _, version := range builds {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsDevelopmentBuild())
 		s.False(v.IsRelease())
 	}
@@ -214,8 +221,9 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 	}
 
 	for _, version := range releases {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsReleaseCandidate())
 		s.True(v.IsInitialStableReleaseCandidate(), version)
 	}
@@ -231,8 +239,9 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 	}
 
 	for _, version := range otherRcs {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 		s.True(v.IsReleaseCandidate())
 		s.False(v.IsInitialStableReleaseCandidate())
 	}
@@ -256,9 +265,10 @@ func (s *VersionSuite) TestSortingVersions() {
 	for _, value := range values {
 		var v []MongoDBVersion
 		for _, input := range value.input {
-			version, err := NewMongoDBVersion(input)
+			version, err := CreateMongoDBVersion(input)
 			s.NoError(err)
-			v = append(v, *version)
+			s.Require().NotNil(version)
+			v = append(v, version)
 		}
 
 		versions := MongoDBVersionSlice(v)
@@ -278,10 +288,11 @@ func (s *VersionSuite) TestVersionSliceStringFormating() {
 	versions := []string{"3.2.1", "2.6.18", "2.4.3", "1.8.4"}
 	slice := make(MongoDBVersionSlice, len(versions))
 
-	for _, v := range versions {
-		ver, err := NewMongoDBVersion(v)
+	for i, v := range versions {
+		ver, err := CreateMongoDBVersion(v)
 		s.NoError(err)
-		slice = append(slice, *ver)
+		s.Require().NotNil(v)
+		slice[i] = ver
 	}
 
 	s.Equal(strings.Join(versions, ", "), slice.String())
@@ -292,13 +303,14 @@ func (s *VersionSuite) TestParsingIdentifiesRCForRCs() {
 		"3.2.0-rc0":  0,
 		"2.4.0-rc42": 42,
 		"1.8.4-rc1":  1,
-		"4.6.1-rc12": 12,
+		"4.4.1-rc12": 12,
 	}
 
 	for version, rcNumber := range cases {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
-		s.Equal(v.RcNumber(), rcNumber)
+		s.Require().NotNil(v)
+		s.Equal(v.RCNumber(), rcNumber)
 	}
 
 }
@@ -310,9 +322,10 @@ func (s *VersionSuite) TestRCNumberIsLessThanZeroForNonRCs() {
 	}
 
 	for _, version := range cases {
-		v, err := NewMongoDBVersion(version)
+		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
-		s.True(v.RcNumber() < 0)
+		s.Require().NotNil(v)
+		s.True(v.RCNumber() < 0)
 	}
 }
 
@@ -322,22 +335,28 @@ func (s *VersionSuite) TestVersionConversionProducesExpectedVersionObjectsWithou
 	// should convert a string to a version object.
 	vString, err := ConvertVersion(expectedVersion)
 	s.NoError(err)
-	s.Equal(vString.source, expectedVersion)
+	s.Require().NotNil(vString)
+	s.Equal(vString.String(), expectedVersion)
 
 	// pass a pointer to a version object the converter
 	vVersionPointer, err := ConvertVersion(vString)
 	s.NoError(err)
-	s.Equal(vVersionPointer.source, expectedVersion)
+	s.Equal(vVersionPointer.String(), expectedVersion)
 
-	// pass a version object itself rather than a ref.
-	vVersionObj, err := ConvertVersion(*vVersionPointer)
+	// pass a legacy version object itself rather than a ref.
+	vVersionLegacy, ok := vVersionPointer.(*LegacyMongoDBVersion)
+	s.True(ok)
+	s.Require().NotNil(vVersionLegacy)
+	vVersionObj, err := ConvertVersion(*vVersionLegacy)
 	s.NoError(err)
-	s.Equal(vVersionObj.source, expectedVersion)
+	s.Require().NotNil(vVersionObj)
+	s.Equal(vVersionObj.String(), expectedVersion)
 
 	// try a smevar.Version object
-	vSemVar, err := ConvertVersion(vVersionObj.parsed)
+	vSemVar, err := ConvertVersion(vVersionObj.Parsed())
 	s.NoError(err)
-	s.Equal(vSemVar.source, expectedVersion)
+	s.Require().NotNil(vSemVar)
+	s.Equal(vSemVar.String(), expectedVersion)
 }
 
 func (s *VersionSuite) TestVersionConverterErrorsForInvalidVersions() {
@@ -366,6 +385,7 @@ func (s *VersionSuite) TestLessThanComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsLessThan(s.baseVersion))
@@ -374,11 +394,11 @@ func (s *VersionSuite) TestLessThanComparator() {
 			s.True(s.baseVersion.IsGreaterThanOrEqualTo(v))
 		} else {
 			s.False(v.IsLessThan(s.baseVersion))
-			if v.source == s.baseVersion.source {
+			if v.String() == s.baseVersion.String() {
 				continue
 			}
 			s.False(s.baseVersion.IsGreaterThanOrEqualTo(v),
-				fmt.Sprintf("%s %s", s.baseVersion.source, v.source))
+				fmt.Sprintf("%s %s", s.baseVersion.String(), v.String()))
 		}
 	}
 }
@@ -397,17 +417,18 @@ func (s *VersionSuite) TestLessThanOrEqualToComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsLessThanOrEqualTo(s.baseVersion))
 
 			// test inverse
-			if v.source == s.baseVersion.source {
+			if v.String() == s.baseVersion.String() {
 				continue
 			}
 
 			s.True(s.baseVersion.IsGreaterThan(v), fmt.Sprintf("%s == %s",
-				v.source, s.baseVersion.source))
+				v.String(), s.baseVersion.String()))
 		} else {
 			s.False(v.IsLessThanOrEqualTo(s.baseVersion))
 
@@ -431,6 +452,7 @@ func (s *VersionSuite) TestGreaterThanComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsGreaterThan(s.baseVersion))
@@ -461,6 +483,7 @@ func (s *VersionSuite) TestGreaterThanOrEqualToComparator() {
 	for version, expectedValue := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if expectedValue {
 			s.True(v.IsGreaterThanOrEqualTo(s.baseVersion))
@@ -491,6 +514,7 @@ func (s *VersionSuite) TestVersionEqualityOperators() {
 	for version, isEqual := range cases {
 		v, err := ConvertVersion(version)
 		s.NoError(err)
+		s.Require().NotNil(v)
 
 		if isEqual {
 			s.True(v.IsEqualTo(s.baseVersion))
