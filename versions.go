@@ -17,7 +17,10 @@ import (
 	"github.com/blang/semver"
 )
 
-const endOfLegacy = "4.5.0"
+const (
+	endOfLegacy = "4.4.9"
+	devReleaseTag = "alpha"
+)
 
 // MongoDBVersion encapsulates information about a MongoDB version.
 // Use the associated methods to ask questions about MongoDB
@@ -31,23 +34,33 @@ type MongoDBVersion interface {
 	Parsed() semver.Version
 	// Series returns the release series for legacy versions.
 	Series() string
-	// IsReleaseCandidate returns true if the legacy version is a release candidate.
+	// Quarter returns the major and quarter for versions.
+	Quarter() string
+	// IsReleaseCandidate returns true if the version is a release candidate.
 	IsReleaseCandidate() bool
+	// IsDevelopmentRelease returns true if the version is a development release.
+	IsDevelopmentRelease() bool
+	// DevelopmentReleaseNumber returns the development release number, if applicable.
+	DevelopmentReleaseNumber() int
+	// RCNumber returns the RC counter (or -1 if not a release candidate).
+	RCNumber() int
+	// IsLTS returns true if the release is long-term supported, i.e. the yearly release.
+	IsLTS() bool
+	// IsContinuousRelease returns true if the release is a quarterly (non-LTS) release.
+	IsContinuousRelease() bool
+	// IsRelease returns true if the version is a release.
+	IsRelease() bool
+	// IsDevelopmentBuild returns true for non-release versions.
+	IsDevelopmentBuild() bool
 	// IsStableSeries returns true if the legacy version is a stable series.
 	IsStableSeries() bool
 	// IsDevelopmentSeries returns true if the legacy version is a development series.
 	IsDevelopmentSeries() bool
 	// StableReleaseSeries returns true if the legacy version is a stable release series.
 	StableReleaseSeries() string
-	// IsRelease returns true if the version is a release.
-	IsRelease() bool
-	// IsDevelopmentBuild returns true for non-release versions.
-	IsDevelopmentBuild() bool
 	// IsInitialStableReleaseCandidate returns true if the legacy version is a release
 	// candidate for the initial release of a stable series.
 	IsInitialStableReleaseCandidate() bool
-	// RCNumber returns the RC counter (or -1 if not a release candidate)
-	RCNumber() int
 
 	IsLessThan(version MongoDBVersion) bool
 	IsLessThanOrEqualTo(version MongoDBVersion) bool
@@ -73,7 +86,60 @@ type LegacyMongoDBVersion struct {
 // NewMongoDBVersion is a structure representing a version identifier for versions of
 // MongoDB, which implements the MongoDBVersion.
 type NewMongoDBVersion struct {
-	LegacyMongoDBVersion
+	LegacyMongoDBVersion // note not all fields are applicable to NewMongoDBVersion
+	isDevRelease bool
+	devReleaseNumber int
+	quarter string
+}
+
+// Series is not applicable to new versions, so always return the empty string.
+func (v *NewMongoDBVersion) Series() string {
+	return ""
+}
+
+func (v *NewMongoDBVersion) Quarter() string {
+	return v.quarter
+}
+
+// IsStableSeries is not applicable to new versions, so always return false.
+func (v *NewMongoDBVersion) IsStableSeries() bool {
+	return false
+}
+
+// IsDevelopmentSeries is not applicable to new versions, so always return false.
+func (v *NewMongoDBVersion) IsDevelopmentSeries() bool {
+	return false
+}
+
+// IsInitialStableReleaseCandidate is not applicable to new versions, so always return false.
+func (v *NewMongoDBVersion) IsInitialStableReleaseCandidate() bool {
+	return false
+}
+
+// StableReleaseSeries is not applicable to new versions, so always return the empty string.
+func (v *NewMongoDBVersion) StableReleaseSeries() string {
+	return ""
+}
+
+// IsLTS returns true if this is the year
+func (v *NewMongoDBVersion) IsLTS() bool {
+	return v.IsRelease() && v.Parsed().Minor == 0
+}
+
+// func IsContinuousRelease returns true if the version is a continuous release.
+func (v *NewMongoDBVersion) IsContinuousRelease() bool {
+	return v.IsRelease() && v.Parsed().Minor != 0
+}
+
+// IsDevelopmentRelease returns true if the version is a development release.
+func (v *NewMongoDBVersion) IsDevelopmentRelease() bool {
+	return v.isDevRelease
+}
+
+// DevelopmentReleaseNumber returns the number of the development release,
+// or -1 if not applicable.
+func (v *NewMongoDBVersion) DevelopmentReleaseNumber() int {
+	return v.devReleaseNumber
 }
 
 // CreateMongoDBVersion returns an implementation of the MongoDBVersion.
@@ -81,34 +147,32 @@ type NewMongoDBVersion struct {
 // Otherwise, we use the modern versioning scheme.
 func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 	endOfLegacyVersion, _ := semver.Parse(endOfLegacy)
-
-	// pre-processing to then determine which version to use
-	toParse := version
-	if strings.HasSuffix(version, "-") && !strings.Contains(version, "pre") {
-			toParse += "pre-"
-	}
-	if strings.Contains(toParse, "~") {
-		versionParts := strings.Split(version, "~")
-		toParse = versionParts[0]
-	}
-
-	parsed, err := semver.Parse(toParse)
+	v, err := createLegacyMongoDBVersion(version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing %s'", toParse)
+		return nil, errors.Wrapf(err, "creating initial version")
 	}
-	if parsed.LT(endOfLegacyVersion) {
-		return createLegacyMongoDBVersion(version)
+	if v.Parsed().LTE(endOfLegacyVersion) {
+		return v, nil
 	}
-	return createNewMongoDBVersion(version)
+	return createNewMongoDBVersion(*v)
 }
-
 
 // createNewMongoDBVersion takes a string representing a MongoDBVersion and
 // returns a NewMongoDBVersion object. All parsing of a version happens during this phase.
-func createNewMongoDBVersion(version string) (*NewMongoDBVersion, error) {
-	return nil, errors.New("not yet implemented")
-}
+func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVersion, error) {
+	v := &NewMongoDBVersion{LegacyMongoDBVersion: parsedVersion, devReleaseNumber: -1}
+	if strings.Contains(v.tag, devReleaseTag) {
+		v.isDevRelease = true
 
+		var err error
+		v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
+		if err != nil {
+
+		}
+	}
+	v.quarter = v.String()[:3]
+	return v, nil
+}
 
 // createLegacyMongoDBVersion takes a string representing a MongoDB version and
 // returns a LegacyMongoDBVersion object. All parsing of a version happens during this phase.
@@ -188,8 +252,7 @@ func ConvertVersion(v interface{}) (MongoDBVersion, error) {
 	}
 }
 
-// String returns a string representation of the MongoDB version
-// number.
+// String returns a string representation of the MongoDB version number.
 func (v *LegacyMongoDBVersion) String() string {
 	return v.source
 }
@@ -203,6 +266,11 @@ func (v *LegacyMongoDBVersion) Parsed() semver.Version {
 // components of a version. For example for 3.2.6, the series is 3.2.
 func (v *LegacyMongoDBVersion) Series() string {
 	return v.series
+}
+
+// Quarter is not applicable to legacy versions, so always return the empty string.
+func (v *LegacyMongoDBVersion) Quarter() string {
+	return ""
 }
 
 // IsReleaseCandidate returns true for releases that have the "rc[0-9]"
@@ -249,6 +317,26 @@ func (v *LegacyMongoDBVersion) StableReleaseSeries() string {
 // releases.
 func (v *LegacyMongoDBVersion) IsRelease() bool {
 	return !v.isDev
+}
+
+// IsLTS isn't applicable to legacy versions so we return false.
+func (v *LegacyMongoDBVersion) IsLTS() bool {
+	return false
+}
+
+// IsContinuousRelease isn't applicable to legacy versions so return false.
+func (v *LegacyMongoDBVersion) IsContinuousRelease() bool {
+	return false
+}
+
+// IsDevelopmentRelease returns true if the version refers to a development release.
+func (v *LegacyMongoDBVersion) IsDevelopmentRelease() bool {
+	return v.IsDevelopmentSeries() && v.IsRelease()
+}
+
+// DevelopmentReleaseNumber is not applicable to legacy versions, so it returns -1.
+func (v *LegacyMongoDBVersion) DevelopmentReleaseNumber() int {
+	return -1
 }
 
 // IsDevelopmentBuild returns true for all non-release builds,

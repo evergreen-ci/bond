@@ -41,7 +41,7 @@ func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload,
 	version.mutex.RLock()
 	defer version.mutex.RLock()
 
-	// TODO: this is the place to fix hanlding for the Base edition, which is not necessarily intuitive.
+	// TODO: this is the place to fix handling for the Base edition, which is not necessarily intuitive.
 	if key.Edition == Base {
 		if key.Target == "linux" {
 			key.Target += "_" + string(key.Arch)
