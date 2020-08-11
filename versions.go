@@ -161,17 +161,13 @@ func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 // returns a NewMongoDBVersion object. All parsing of a version happens during this phase.
 func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVersion, error) {
 	v := &NewMongoDBVersion{LegacyMongoDBVersion: parsedVersion, devReleaseNumber: -1}
+	var err error
 	if strings.Contains(v.tag, devReleaseTag) {
 		v.isDevRelease = true
-
-		var err error
+		v.quarter = v.String()[:3]
 		v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
-		if err != nil {
-
-		}
 	}
-	v.quarter = v.String()[:3]
-	return v, nil
+	return v, err
 }
 
 // createLegacyMongoDBVersion takes a string representing a MongoDB version and
