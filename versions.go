@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	endOfLegacy = "4.4.9"
+	endOfLegacy = "4.5.0-alpha0"
 	devReleaseTag = "alpha"
 )
 
@@ -46,8 +46,8 @@ type MongoDBVersion interface {
 	RCNumber() int
 	// IsLTS returns true if the release is long-term supported, i.e. the yearly release.
 	IsLTS() bool
-	// IsContinuousRelease returns true if the release is a quarterly (non-LTS) release.
-	IsContinuousRelease() bool
+	// IsContinuous returns true if the release is a quarterly (non-LTS) release.
+	IsContinuous() bool
 	// IsRelease returns true if the version is a release.
 	IsRelease() bool
 	// IsDevelopmentBuild returns true for non-release versions.
@@ -121,13 +121,13 @@ func (v *NewMongoDBVersion) StableReleaseSeries() string {
 	return ""
 }
 
-// IsLTS returns true if this is the year
+// IsLTS returns true if this is the first release of the year
 func (v *NewMongoDBVersion) IsLTS() bool {
 	return v.IsRelease() && v.Parsed().Minor == 0
 }
 
-// func IsContinuousRelease returns true if the version is a continuous release.
-func (v *NewMongoDBVersion) IsContinuousRelease() bool {
+// func IsContinuous returns true if the version is a continuous release.
+func (v *NewMongoDBVersion) IsContinuous() bool {
 	return v.IsRelease() && v.Parsed().Minor != 0
 }
 
@@ -151,7 +151,7 @@ func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating initial version")
 	}
-	if v.Parsed().LTE(endOfLegacyVersion) {
+	if v.Parsed().LT(endOfLegacyVersion) {
 		return v, nil
 	}
 	return createNewMongoDBVersion(*v)
@@ -162,9 +162,12 @@ func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
 func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVersion, error) {
 	v := &NewMongoDBVersion{LegacyMongoDBVersion: parsedVersion, devReleaseNumber: -1}
 	var err error
+	if len(v.String()) < 3 {
+		return nil, errors.Errorf("version '%s' is invalid", v.String())
+	}
+	v.quarter = v.String()[:3]
 	if strings.Contains(v.tag, devReleaseTag) {
 		v.isDevRelease = true
-		v.quarter = v.String()[:3]
 		v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
 	}
 	return v, err
@@ -216,7 +219,9 @@ func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 		}
 
 	}
-
+	if len(version) < 3 {
+		return nil, errors.Errorf("version '%s' is invalid", version)
+	}
 	v.series = version[:3]
 	return v, err
 }
@@ -320,8 +325,8 @@ func (v *LegacyMongoDBVersion) IsLTS() bool {
 	return false
 }
 
-// IsContinuousRelease isn't applicable to legacy versions so return false.
-func (v *LegacyMongoDBVersion) IsContinuousRelease() bool {
+// IsContinuous isn't applicable to legacy versions so return false.
+func (v *LegacyMongoDBVersion) IsContinuous() bool {
 	return false
 }
 

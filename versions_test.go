@@ -126,21 +126,21 @@ func (s *VersionSuite) TestSeries() {
 		{"1.8.4", "1.8"},
 		{"2.7.3", "2.7"},
 		{"3.4.5", "3.4"},
-		{"2.3.0", "2.3"},
+		{"4.4.9", "4.4"},
 		{"2.8.0-rc0", "2.8"},
 		{"4.2.0-rc0", "4.2"},
 		{"3.3.5-0-gdd3f158", "3.3"},
 		{"3.0.2-", "3.0"},
-		{"5.4.9", "5.4"},
-		{"5.0.0", "5.0"},
-		{"4.6.4-alpha12", "4.6"},
+		{"5.4.9", ""},
+		{"5.0.0", ""},
+		{"4.5.0-alpha12", ""},
 	}
 
 	for _, value := range values {
 		v, err := CreateMongoDBVersion(value.input)
 		s.NoError(err)
 		s.Require().NotNil(v)
-		s.Equal(v.Series(), value.expected)
+		s.Equal(value.expected, v.Series())
 	}
 }
 
@@ -399,11 +399,11 @@ func (s *VersionSuite) TestIsLTS() {
 		version, err := ConvertVersion(v)
 		s.NoError(err)
 		s.Require().NotNil(version)
-		s.Equal(expectedValue, version.DevelopmentReleaseNumber(), v)
+		s.Equal(expectedValue, version.IsLTS(), v)
 	}
 }
 
-func (s *VersionSuite) TestIsContinuousRelease() {
+func (s *VersionSuite) TestIsContinuous() {
 	cases := map[string]bool{
 		"1.8.0-rc0": false,
 		"3.2.7": false,
@@ -419,7 +419,7 @@ func (s *VersionSuite) TestIsContinuousRelease() {
 		version, err := ConvertVersion(v)
 		s.NoError(err)
 		s.Require().NotNil(version)
-		s.Equal(expectedValue, version.IsContinuousRelease(), v)
+		s.Equal(expectedValue, version.IsContinuous(), v)
 	}
 }
 
