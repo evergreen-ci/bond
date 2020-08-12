@@ -131,9 +131,11 @@ func (s *VersionSuite) TestSeries() {
 		{"4.2.0-rc0", "4.2"},
 		{"3.3.5-0-gdd3f158", "3.3"},
 		{"3.0.2-", "3.0"},
-		{"5.4.9", ""},
-		{"5.0.0", ""},
-		{"4.5.0-alpha12", ""},
+		{"4.40.0", "4.40"},
+		{"4.5.0-rc12", "4.5"},
+		{"5.4.9", "5.4"},
+		{"5.0.0", "5.0"},
+		{"4.5.0-alpha12", "4.5"},
 	}
 
 	for _, value := range values {
@@ -420,24 +422,6 @@ func (s *VersionSuite) TestIsContinuous() {
 		s.NoError(err)
 		s.Require().NotNil(version)
 		s.Equal(expectedValue, version.IsContinuous(), v)
-	}
-}
-
-func (s *VersionSuite) TestQuarter() {
-	cases := map[string]string{
-		"1.8.0-rc0": "",
-		"3.2.7": "",
-		"3.4.0": "",
-		"4.4.9-rc0": "",
-		"4.5.0": "4.5",
-		"5.4.9-alpha1": "5.4",
-		"5.0.0-rc12": "5.0",
-	}
-	for v, expectedValue := range cases {
-		version, err := ConvertVersion(v)
-		s.NoError(err)
-		s.Require().NotNil(version)
-		s.Equal(expectedValue, version.Quarter(), v)
 	}
 }
 

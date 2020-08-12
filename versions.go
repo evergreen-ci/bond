@@ -32,10 +32,8 @@ type MongoDBVersion interface {
 	String() string
 	// Parsed returns the parsed version object for the version.
 	Parsed() semver.Version
-	// Series returns the release series for legacy versions.
+	// Series returns the first two components for the version.
 	Series() string
-	// Quarter returns the major and quarter for versions.
-	Quarter() string
 	// IsReleaseCandidate returns true if the version is a release candidate.
 	IsReleaseCandidate() bool
 	// IsDevelopmentRelease returns true if the version is a development release.
@@ -92,15 +90,6 @@ type NewMongoDBVersion struct {
 	quarter string
 }
 
-// Series is not applicable to new versions, so always return the empty string.
-func (v *NewMongoDBVersion) Series() string {
-	return ""
-}
-
-func (v *NewMongoDBVersion) Quarter() string {
-	return v.quarter
-}
-
 // IsStableSeries is not applicable to new versions, so always return false.
 func (v *NewMongoDBVersion) IsStableSeries() bool {
 	return false
@@ -121,7 +110,12 @@ func (v *NewMongoDBVersion) StableReleaseSeries() string {
 	return ""
 }
 
-// IsLTS returns true if this is the first release of the year
+// Series returns the major and quarter for the version.
+func (v *NewMongoDBVersion) Series() string {
+	return v.series
+}
+
+// IsLTS returns true if this is the first release of the year.
 func (v *NewMongoDBVersion) IsLTS() bool {
 	return v.IsRelease() && v.Parsed().Minor == 0
 }
@@ -228,7 +222,7 @@ func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 	if len(version) < 3 {
 		return nil, errors.Errorf("version '%s' is invalid", version)
 	}
-	v.series = version[:3]
+	v.series = fmt.Sprintf("%d.%d", v.Parsed().Major, v.Parsed().Minor)
 	return v, err
 }
 
@@ -273,11 +267,6 @@ func (v *LegacyMongoDBVersion) Parsed() semver.Version {
 // components of a version. For example for 3.2.6, the series is 3.2.
 func (v *LegacyMongoDBVersion) Series() string {
 	return v.series
-}
-
-// Quarter is not applicable to legacy versions, so always return the empty string.
-func (v *LegacyMongoDBVersion) Quarter() string {
-	return ""
 }
 
 // IsReleaseCandidate returns true for releases that have the "rc[0-9]"
