@@ -41,6 +41,9 @@ func (s *VersionSuite) TestValidVersionsParseWithoutErrors() {
 		"3.3.5-0-gdd3f158",
 		"3.0.2-",
 		"3.0.1-pre-",
+		"4.7.7",
+		"5.0.0-rc12",
+		"5.1.2-alpha14",
 	}
 	for _, version := range versions {
 		_, err := CreateMongoDBVersion(version)
@@ -76,6 +79,7 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 		"3.4.0-rc240",
 		"3.4.2-rc1",
 		"2.6.0-rc2",
+		"5.0.0-rc12",
 	}
 
 	for _, version := range rcs {
@@ -96,6 +100,9 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 		"3.3.5-0-gdd3f158",
 		"3.0.2-",
 		"3.0.1-pre-",
+		"4.5.0",
+		"5.0.0",
+		"4.6.2-alpha12",
 	}
 
 	for _, version := range notRcs {
@@ -107,7 +114,7 @@ func (s *VersionSuite) TestVersionParserIdentifiesReleaseCandidates() {
 	}
 }
 
-func (s *VersionSuite) TestReleaseSeriesDetection() {
+func (s *VersionSuite) TestSeries() {
 	type testValue struct {
 		input    string
 		expected string
@@ -119,18 +126,23 @@ func (s *VersionSuite) TestReleaseSeriesDetection() {
 		{"1.8.4", "1.8"},
 		{"2.7.3", "2.7"},
 		{"3.4.5", "3.4"},
-		{"2.3.0", "2.3"},
+		{"4.4.9", "4.4"},
 		{"2.8.0-rc0", "2.8"},
 		{"4.2.0-rc0", "4.2"},
 		{"3.3.5-0-gdd3f158", "3.3"},
 		{"3.0.2-", "3.0"},
+		{"4.40.0", "4.40"},
+		{"4.5.0-rc12", "4.5"},
+		{"5.4.9", "5.4"},
+		{"5.0.0", "5.0"},
+		{"4.5.0-alpha12", "4.5"},
 	}
 
 	for _, value := range values {
 		v, err := CreateMongoDBVersion(value.input)
 		s.NoError(err)
 		s.Require().NotNil(v)
-		s.Equal(v.Series(), value.expected)
+		s.Equal(value.expected, v.Series())
 	}
 }
 
@@ -178,9 +190,13 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 		"3.3.0",
 		"3.1.1",
 		"2.5.8",
+		"2.6.3-rc21",
 		"3.4.0",
 		"3.2.1",
 		"2.6.8",
+		"5.2.0",
+		"5.3.3",
+		"5.4.0-rc12",
 	}
 
 	for _, version := range releases {
@@ -196,6 +212,7 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 		"3.8.5-23-gffd4a182",
 		"3.2.1-",
 		"2.6.1-pre-",
+		"5.0.0-alpha12",
 	}
 
 	for _, version := range builds {
@@ -218,6 +235,7 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 		"3.2.0-rc112",
 		"2.6.0-rc1",
 		"2.8.0-rc3",
+		"4.4.0-rc0",
 	}
 
 	for _, version := range releases {
@@ -236,14 +254,16 @@ func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 		"2.6.8-rc2",
 		"3.4.2-rc3",
 		"3.4.2-rc8",
+		"4.6.0-rc0",
+		"5.2.0-rc12",
 	}
 
 	for _, version := range otherRcs {
 		v, err := CreateMongoDBVersion(version)
 		s.NoError(err)
 		s.Require().NotNil(v)
-		s.True(v.IsReleaseCandidate())
-		s.False(v.IsInitialStableReleaseCandidate())
+		s.True(v.IsReleaseCandidate(), version)
+		s.False(v.IsInitialStableReleaseCandidate(), version)
 	}
 }
 
@@ -260,6 +280,8 @@ func (s *VersionSuite) TestSortingVersions() {
 		{input: []string{"2.7.3", "3.0.2"}, willSwap: false},
 		{input: []string{"3.8.5", "3.7.0"}, willSwap: true},
 		{input: []string{"2.3.0", "2.3.7"}, willSwap: false},
+		{input: []string{"4.5.1", "4.5.0"}, willSwap: true},
+		{input: []string{"5.7.2", "5.7.0"}, willSwap: true},
 	}
 
 	for _, value := range values {
@@ -284,8 +306,8 @@ func (s *VersionSuite) TestSortingVersions() {
 	}
 }
 
-func (s *VersionSuite) TestVersionSliceStringFormating() {
-	versions := []string{"3.2.1", "2.6.18", "2.4.3", "1.8.4"}
+func (s *VersionSuite) TestVersionSliceStringFormatting() {
+	versions := []string{"3.2.1", "2.6.18", "2.4.3", "1.8.4", "5.4.0"}
 	slice := make(MongoDBVersionSlice, len(versions))
 
 	for i, v := range versions {
@@ -304,6 +326,7 @@ func (s *VersionSuite) TestParsingIdentifiesRCForRCs() {
 		"2.4.0-rc42": 42,
 		"1.8.4-rc1":  1,
 		"4.4.1-rc12": 12,
+		"5.5.0-rc8": 8,
 	}
 
 	for version, rcNumber := range cases {
@@ -318,7 +341,7 @@ func (s *VersionSuite) TestParsingIdentifiesRCForRCs() {
 func (s *VersionSuite) TestRCNumberIsLessThanZeroForNonRCs() {
 	cases := []string{
 		"2.3.0", "1.5.0-pre", "1.8.5-pre-", "3.2.1", "3.5.0",
-		"3.3.5-68-gdd3f158", "3.3.5-0-gdd3f158",
+		"3.3.5-68-gdd3f158", "3.3.5-0-gdd3f158", "5.0.0", "4.6.12-alpha8",
 	}
 
 	for _, version := range cases {
@@ -326,6 +349,79 @@ func (s *VersionSuite) TestRCNumberIsLessThanZeroForNonRCs() {
 		s.NoError(err)
 		s.Require().NotNil(v)
 		s.True(v.RCNumber() < 0)
+	}
+}
+
+func (s *VersionSuite) TestIsDevelopmentRelease() {
+	cases := map[string]bool{
+		"1.8.0-rc0": false,
+		"3.2.7": false,
+		"3.4.0-alpha12": false,
+		"4.5.0-alpha4": true,
+		"5.4.9-": false,
+		"5.0.0-alpha123": true,
+		"5.0.0-rc12": false,
+		"5.0.0": false,
+	}
+	for v, expectedValue := range cases {
+		version, err := ConvertVersion(v)
+		s.NoError(err)
+		s.Require().NotNil(version)
+		s.Equal(expectedValue, version.IsDevelopmentRelease(), v)
+	}
+}
+
+func (s *VersionSuite) TestDevelopmentReleaseNumber() {
+	cases := map[string]int{
+		"3.4.0-alpha12": -1,
+		"4.6.0": -1,
+		"4.5.0-alpha4": 4,
+		"5.4.9-alpha1": 1,
+		"5.0.0-alpha123": 123,
+		"5.0.0-rc12": -1,
+		"5.0.0": -1,
+	}
+	for v, expectedValue := range cases {
+		version, err := ConvertVersion(v)
+		s.NoError(err)
+		s.Require().NotNil(version)
+		s.Equal(expectedValue, version.DevelopmentReleaseNumber(), v)
+	}
+}
+
+func (s *VersionSuite) TestIsLTS() {
+	cases := map[string]bool{
+		"4.0.0": false,
+		"4.5.0": false,
+		"5.0.4-alpha123": false,
+		"5.0.4-rc12": true,
+		"5.0.9": true,
+	}
+	for v, expectedValue := range cases {
+		version, err := ConvertVersion(v)
+		s.NoError(err)
+		s.Require().NotNil(version)
+		s.Equal(expectedValue, version.IsLTS(), v)
+	}
+}
+
+func (s *VersionSuite) TestIsContinuous() {
+	cases := map[string]bool{
+		"1.8.0-rc0": false,
+		"3.2.7": false,
+		"3.4.0": false,
+		"4.4.9": false,
+		"4.5.0": true,
+		"4.5.0-": false,
+		"5.4.9-alpha1": false,
+		"5.0.0-rc12": false,
+		"5.0.0": false,
+	}
+	for v, expectedValue := range cases {
+		version, err := ConvertVersion(v)
+		s.NoError(err)
+		s.Require().NotNil(version)
+		s.Equal(expectedValue, version.IsContinuous(), v)
 	}
 }
 
@@ -357,6 +453,21 @@ func (s *VersionSuite) TestVersionConversionProducesExpectedVersionObjectsWithou
 	s.NoError(err)
 	s.Require().NotNil(vSemVar)
 	s.Equal(vSemVar.String(), expectedVersion)
+
+	// new version
+	expectedVersion = "5.4.0-rc3"
+	vString, err = ConvertVersion(expectedVersion)
+	s.NoError(err)
+	s.Require().NotNil(vString)
+	s.Equal(vString.String(), expectedVersion)
+	vVersionNew, ok := vString.(*NewMongoDBVersion)
+	s.True(ok)
+	s.Require().NotNil(vVersionNew)
+
+	vVersionObj, err = ConvertVersion(*vVersionNew)
+	s.NoError(err)
+	s.Require().NotNil(vVersionObj)
+	s.Equal(vVersionObj.String(), expectedVersion)
 }
 
 func (s *VersionSuite) TestVersionConverterErrorsForInvalidVersions() {
@@ -373,13 +484,15 @@ func (s *VersionSuite) TestVersionConverterErrorsForInvalidVersions() {
 func (s *VersionSuite) TestLessThanComparator() {
 	// map of input strings to expected output of <
 	cases := map[string]bool{
-		"1.8.0-rc0": true,
-		"3.2.1":     true,
-		"3.2.6-rc0": true,
-		"3.2.6-rc1": true,
-		"3.2.6":     false,
-		"3.2.7":     false,
-		"3.4.0":     false,
+		"1.8.0-rc0":    true,
+		"3.2.1":        true,
+		"3.2.6-rc0":    true,
+		"3.2.6-rc1":    true,
+		"3.2.6-alpha0": true,
+		"3.2.6":        false,
+		"3.2.7":        false,
+		"3.4.0":        false,
+		"4.6.0":        false,
 	}
 
 	for version, expectedValue := range cases {
@@ -447,6 +560,7 @@ func (s *VersionSuite) TestGreaterThanComparator() {
 		"3.2.6":     false,
 		"3.2.7":     true,
 		"3.4.0":     true,
+		"4.6.0":     true,
 	}
 
 	for version, expectedValue := range cases {
