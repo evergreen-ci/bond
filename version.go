@@ -35,6 +35,16 @@ func (version *ArtifactVersion) refresh() {
 	}
 }
 
+// IsStableVersion returns true if the version indicates an official release.
+func (version *ArtifactVersion) IsDevelopment() (bool, error) {
+	parsedVersion, err := CreateMongoDBVersion(version.Version)
+	if err != nil {
+		return false, errors.Wrap(err, "could not parse version")
+	}
+	// handle legacy and modern versioning schemes
+	return !parsedVersion.IsStableSeries() && !parsedVersion.IsLTS(), nil
+}
+
 // GetDownload returns a matching ArtifactDownload object
 // given a BuildOptions object.
 func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload, error) {
