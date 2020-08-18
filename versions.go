@@ -167,7 +167,12 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 			return nil, errors.Wrapf(err, "couldn't parse development release number")
 		}
 	}
-	return v, err
+
+	if v.isDev {
+		return nil, errors.New("development builds are not allowed in the new versioning scheme")
+	}
+
+	return v, nil
 }
 
 // createLegacyMongoDBVersion takes a string representing a MongoDB version and

@@ -224,6 +224,32 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 	}
 }
 
+func (s *VersionSuite) TestDevelopmentBuildsOnlyAllowedInLegacyVersion() {
+	legacyBuilds := []string{
+		"3.1.5-68-gdd3f158",
+		"3.8.5-23-gffd4a182",
+		"3.2.1-",
+		"2.6.1-pre-",
+	}
+	for _, version := range legacyBuilds {
+		v, err := CreateMongoDBVersion(version)
+		s.NoError(err)
+		s.Require().NotNil(v)
+		s.True(v.IsDevelopmentBuild())
+	}
+
+	newBuilds := []string{
+		"5.1.5-68-gdd3f158",
+		"5.3.5-23-gffd4a182",
+		"5.2.1-",
+		"5.3.1-pre-",
+	}
+	for _, version := range newBuilds {
+		_, err := CreateMongoDBVersion(version)
+		s.Error(err)
+	}
+}
+
 func (s *VersionSuite) TestDistinguishInitialStableVersionRC() {
 	releases := []string{
 		"3.4.0-rc0",
@@ -358,7 +384,6 @@ func (s *VersionSuite) TestIsDevelopmentRelease() {
 		"3.2.7":          false,
 		"3.4.0-alpha12":  false,
 		"4.5.0-alpha4":   true,
-		"5.4.9-":         false,
 		"5.0.0-alpha123": true,
 		"5.0.0-rc12":     false,
 		"5.0.0":          false,
@@ -412,7 +437,6 @@ func (s *VersionSuite) TestIsContinuous() {
 		"3.4.0":        false,
 		"4.4.9":        false,
 		"4.5.0":        true,
-		"4.5.0-":       false,
 		"5.0.0-rc12":   false,
 		"5.0.0":        false,
 		"5.3.9-alpha1": true,
