@@ -18,7 +18,9 @@ type ArtifactVersion struct {
 
 	ProductionRelease  bool `json:"production_release"`
 	DevelopmentRelease bool `json:"development_release"`
-	Current            bool
+	LTSRelease         bool `json:"lts_release"`
+	ContinuousRelease  bool `json:"continuous_release"`
+	Current            bool `json:"current"`
 
 	table map[BuildOptions]ArtifactDownload
 	mutex sync.RWMutex
