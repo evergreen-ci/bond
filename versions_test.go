@@ -197,6 +197,7 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 		"5.2.0",
 		"5.3.3",
 		"5.4.0-rc12",
+		"5.0.0-alpha12",
 	}
 
 	for _, version := range releases {
@@ -212,7 +213,6 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 		"3.8.5-23-gffd4a182",
 		"3.2.1-",
 		"2.6.1-pre-",
-		"5.0.0-alpha12",
 	}
 
 	for _, version := range builds {
@@ -326,7 +326,7 @@ func (s *VersionSuite) TestParsingIdentifiesRCForRCs() {
 		"2.4.0-rc42": 42,
 		"1.8.4-rc1":  1,
 		"4.4.1-rc12": 12,
-		"5.5.0-rc8": 8,
+		"5.5.0-rc8":  8,
 	}
 
 	for version, rcNumber := range cases {
@@ -354,14 +354,14 @@ func (s *VersionSuite) TestRCNumberIsLessThanZeroForNonRCs() {
 
 func (s *VersionSuite) TestIsDevelopmentRelease() {
 	cases := map[string]bool{
-		"1.8.0-rc0": false,
-		"3.2.7": false,
-		"3.4.0-alpha12": false,
-		"4.5.0-alpha4": true,
-		"5.4.9-": false,
+		"1.8.0-rc0":      false,
+		"3.2.7":          false,
+		"3.4.0-alpha12":  false,
+		"4.5.0-alpha4":   true,
+		"5.4.9-":         false,
 		"5.0.0-alpha123": true,
-		"5.0.0-rc12": false,
-		"5.0.0": false,
+		"5.0.0-rc12":     false,
+		"5.0.0":          false,
 	}
 	for v, expectedValue := range cases {
 		version, err := ConvertVersion(v)
@@ -373,13 +373,13 @@ func (s *VersionSuite) TestIsDevelopmentRelease() {
 
 func (s *VersionSuite) TestDevelopmentReleaseNumber() {
 	cases := map[string]int{
-		"3.4.0-alpha12": -1,
-		"4.6.0": -1,
-		"4.5.0-alpha4": 4,
-		"5.4.9-alpha1": 1,
+		"3.4.0-alpha12":  -1,
+		"4.6.0":          -1,
+		"4.5.0-alpha4":   4,
+		"5.4.9-alpha1":   1,
 		"5.0.0-alpha123": 123,
-		"5.0.0-rc12": -1,
-		"5.0.0": -1,
+		"5.0.0-rc12":     -1,
+		"5.0.0":          -1,
 	}
 	for v, expectedValue := range cases {
 		version, err := ConvertVersion(v)
@@ -391,11 +391,11 @@ func (s *VersionSuite) TestDevelopmentReleaseNumber() {
 
 func (s *VersionSuite) TestIsLTS() {
 	cases := map[string]bool{
-		"4.0.0": false,
-		"4.5.0": false,
+		"4.0.0":          false,
+		"4.5.0":          false,
 		"5.0.4-alpha123": false,
-		"5.0.4-rc12": true,
-		"5.0.9": true,
+		"5.0.4-rc12":     true,
+		"5.0.9":          true,
 	}
 	for v, expectedValue := range cases {
 		version, err := ConvertVersion(v)
@@ -407,15 +407,15 @@ func (s *VersionSuite) TestIsLTS() {
 
 func (s *VersionSuite) TestIsContinuous() {
 	cases := map[string]bool{
-		"1.8.0-rc0": false,
-		"3.2.7": false,
-		"3.4.0": false,
-		"4.4.9": false,
-		"4.5.0": true,
-		"4.5.0-": false,
+		"1.8.0-rc0":    false,
+		"3.2.7":        false,
+		"3.4.0":        false,
+		"4.4.9":        false,
+		"4.5.0":        true,
+		"4.5.0-":       false,
 		"5.4.9-alpha1": false,
-		"5.0.0-rc12": false,
-		"5.0.0": false,
+		"5.0.0-rc12":   false,
+		"5.0.0":        false,
 	}
 	for v, expectedValue := range cases {
 		version, err := ConvertVersion(v)
