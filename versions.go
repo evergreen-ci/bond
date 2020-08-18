@@ -13,9 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 )
 
 const (
