@@ -393,7 +393,7 @@ func (s *VersionSuite) TestIsLTS() {
 	cases := map[string]bool{
 		"4.0.0":          false,
 		"4.5.0":          false,
-		"5.0.4-alpha123": false,
+		"5.0.4-alpha123": true,
 		"5.0.4-rc12":     true,
 		"5.0.9":          true,
 	}
@@ -413,9 +413,9 @@ func (s *VersionSuite) TestIsContinuous() {
 		"4.4.9":        false,
 		"4.5.0":        true,
 		"4.5.0-":       false,
-		"5.4.9-alpha1": false,
 		"5.0.0-rc12":   false,
 		"5.0.0":        false,
+		"5.3.9-alpha1": true,
 	}
 	for v, expectedValue := range cases {
 		version, err := ConvertVersion(v)
