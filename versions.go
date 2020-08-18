@@ -9,16 +9,16 @@ package bond
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 )
 
 const (
-	endOfLegacy = "4.5.0-alpha0"
+	endOfLegacy   = "4.5.0-alpha0"
 	devReleaseTag = "alpha"
 )
 
@@ -66,7 +66,6 @@ type MongoDBVersion interface {
 	IsGreaterThanOrEqualTo(version MongoDBVersion) bool
 	IsEqualTo(version MongoDBVersion) bool
 	IsNotEqualTo(version MongoDBVersion) bool
-
 }
 
 // LegacyMongoDBVersion is a structure representing a version identifier for legacy versions of
@@ -85,9 +84,9 @@ type LegacyMongoDBVersion struct {
 // MongoDB, which implements the MongoDBVersion.
 type NewMongoDBVersion struct {
 	LegacyMongoDBVersion // note not all fields are applicable to NewMongoDBVersion
-	isDevRelease bool
-	devReleaseNumber int
-	quarter string
+	isDevRelease         bool
+	devReleaseNumber     int
+	quarter              string
 }
 
 // IsStableSeries is not applicable to new versions, so always return false.
@@ -161,13 +160,19 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 	}
 	v.quarter = v.String()[:3]
 	if strings.Contains(v.tag, devReleaseTag) {
+		v.isDev = false
 		v.isDevRelease = true
 		v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse development release number")
 		}
 	}
-	return v, err
+
+	if v.isDev {
+		return nil, errors.New("development builds are not allowed in the new versioning scheme")
+	}
+
+	return v, nil
 }
 
 // createLegacyMongoDBVersion takes a string representing a MongoDB version and
