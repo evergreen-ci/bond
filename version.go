@@ -37,6 +37,14 @@ func (version *ArtifactVersion) refresh() {
 	}
 }
 
+func (version *ArtifactVersion) isDevelopmentSeries() (bool, error) {
+	parsedVersion, err := CreateMongoDBVersion(version.Version)
+	if err != nil {
+		return false, errors.Wrap(err, "could not parse version")
+	}
+	return parsedVersion.IsDevelopmentSeries(), nil
+}
+
 // GetDownload returns a matching ArtifactDownload object
 // given a BuildOptions object.
 func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload, error) {
