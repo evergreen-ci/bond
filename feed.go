@@ -151,13 +151,13 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 		return "", errors.Wrapf(err, "problem fetching download information for series '%s'", series)
 	}
 
-	isDev, err := version.isNightlyOrContinuous()
+	isDev, err := version.isDevelopmentSeries()
 	if err != nil {
 		return "", errors.Wrap(err, "problem determining version type")
 	}
 
-	// If it's nightly or continuous, we just replace the version with the word latest.
-	// Otherwise the branch name is in the file name, and we just take the latest from master.
+	// If it's a development series, we just replace the version with the word latest.
+	// Otherwise the branch name is in the file name, and we take the latest from master.
 	if isDev {
 		return strings.Replace(dl.Archive.URL, version.Version, "latest", -1), nil
 	}
@@ -196,7 +196,6 @@ func (feed *ArtifactsFeed) GetLatestRelease(series string) (*ArtifactVersion, er
 	}
 
 	for _, version := range feed.Versions {
-		// Will current be accurate for the new versioning scheme?
 		if version.Current && strings.HasPrefix(version.Version, series) {
 			return version, nil
 		}

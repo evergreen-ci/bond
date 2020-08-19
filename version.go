@@ -35,14 +35,12 @@ func (version *ArtifactVersion) refresh() {
 	}
 }
 
-// isNightlyOrContinuous returns true if the version doesn't indicate an official release.
-func (version *ArtifactVersion) isNightlyOrContinuous() (bool, error) {
+func (version *ArtifactVersion) isDevelopmentSeries() (bool, error) {
 	parsedVersion, err := CreateMongoDBVersion(version.Version)
 	if err != nil {
 		return false, errors.Wrap(err, "could not parse version")
 	}
-	// handle legacy and modern versioning schemes
-	return !parsedVersion.IsStableSeries() || parsedVersion.IsContinuous(), nil
+	return parsedVersion.IsDevelopmentSeries(), nil
 }
 
 // GetDownload returns a matching ArtifactDownload object
