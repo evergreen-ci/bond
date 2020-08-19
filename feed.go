@@ -157,7 +157,7 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 	}
 
 	// If it's a development series, we just replace the version with the word latest.
-	// Otherwise the branch name is in the file name, and we take the latest from master.
+	// Otherwise the branch name is in the file name, and we take the latest from the series release.
 	if isDev {
 		return strings.Replace(dl.Archive.URL, version.Version, "latest", -1), nil
 	}
