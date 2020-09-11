@@ -434,6 +434,25 @@ func (s *VersionSuite) TestIsLTS() {
 	}
 }
 
+func (s *VersionSuite) TestLTS() {
+	cases := map[string]string{
+		"4.0.0":          "",
+		"4.5.0":          "",
+		"4.8.0":          "",
+		"5.0.0":          "5.0",
+		"5.0.4-alpha123": 5.0,
+		"5.0.9":          true,
+		"5.3.8":          "5.0",
+		"6.1.1":          "6.0",
+	}
+	for v, expectedValue := range cases {
+		version, err := ConvertVersion(v)
+		s.NoError(err)
+		s.Require().NotNil(version)
+		s.Equal(expectedValue, version.LTS(), v)
+	}
+}
+
 func (s *VersionSuite) TestIsContinuous() {
 	cases := map[string]bool{
 		"1.8.0-rc0":    false,
