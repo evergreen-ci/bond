@@ -119,7 +119,6 @@ func (v *NewMongoDBVersion) Series() string {
 
 // IsLTS returns true if this is the first release of the year.
 func (v *NewMongoDBVersion) IsLTS() bool {
-
 	return v.IsRelease() && v.Parsed().Minor == 0
 }
 
