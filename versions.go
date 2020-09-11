@@ -19,6 +19,7 @@ import (
 
 const (
 	endOfLegacy   = "4.5.0-alpha0"
+	firstLTS      = "5.0.0"
 	devReleaseTag = "alpha"
 )
 
@@ -44,6 +45,8 @@ type MongoDBVersion interface {
 	RCNumber() int
 	// IsLTS returns true if the release is long-term supported, i.e. the yearly release.
 	IsLTS() bool
+	// LTS returns most recent LTS series, which may be itself, if applicable.
+	LTS() string
 	// IsContinuous returns true if the release is a quarterly (non-LTS) release.
 	IsContinuous() bool
 	// IsRelease returns true if the version is a release.
@@ -119,6 +122,18 @@ func (v *NewMongoDBVersion) IsLTS() bool {
 	return v.IsRelease() && v.Parsed().Minor == 0
 }
 
+// LTS returns the most recent LTS series.
+func (v *NewMongoDBVersion) LTS() string {
+	firstLTSVersion, _ := semver.Parse(firstLTS)
+	if v.Parsed().LT(firstLTSVersion) {
+		// Return empty string for versions that are not preceded by an
+		// LTS series.
+		return ""
+	}
+
+	return fmt.Sprintf("%d.0", v.Parsed().Major)
+}
+
 // func IsContinuous returns true if the version is a continuous release.
 func (v *NewMongoDBVersion) IsContinuous() bool {
 	return v.IsRelease() && v.Parsed().Minor != 0
@@ -162,9 +177,11 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 	if strings.Contains(v.tag, devReleaseTag) {
 		v.isDev = false
 		v.isDevRelease = true
-		v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
-		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse development release number")
+		if len(v.tag) > len(devReleaseTag) {
+			v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
+			if err != nil {
+				return nil, errors.Wrapf(err, "couldn't parse development release number")
+			}
 		}
 	}
 
@@ -323,6 +340,11 @@ func (v *LegacyMongoDBVersion) IsRelease() bool {
 // IsLTS isn't applicable to legacy versions so we return false.
 func (v *LegacyMongoDBVersion) IsLTS() bool {
 	return false
+}
+
+// LTS isn't applicable to legacy version so we return an empty string.
+func (v *LegacyMongoDBVersion) LTS() string {
+	return ""
 }
 
 // IsContinuous isn't applicable to legacy versions so return false.
