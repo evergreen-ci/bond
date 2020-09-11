@@ -43,6 +43,7 @@ func (s *VersionSuite) TestValidVersionsParseWithoutErrors() {
 		"3.0.1-pre-",
 		"4.7.7",
 		"5.0.0-rc12",
+		"5.1.2-alpha",
 		"5.1.2-alpha14",
 	}
 	for _, version := range versions {
@@ -197,6 +198,7 @@ func (s *VersionSuite) TestVersionCanIdentifyReleases() {
 		"5.2.0",
 		"5.3.3",
 		"5.4.0-rc12",
+		"5.0.0-alpha",
 		"5.0.0-alpha12",
 	}
 
@@ -383,6 +385,7 @@ func (s *VersionSuite) TestIsDevelopmentRelease() {
 		"1.8.0-rc0":      false,
 		"3.2.7":          false,
 		"3.4.0-alpha12":  false,
+		"4.5.0-alpha":    true,
 		"4.5.0-alpha4":   true,
 		"5.0.0-alpha123": true,
 		"5.0.0-rc12":     false,
@@ -400,6 +403,7 @@ func (s *VersionSuite) TestDevelopmentReleaseNumber() {
 	cases := map[string]int{
 		"3.4.0-alpha12":  -1,
 		"4.6.0":          -1,
+		"4.5.0-alpha":    0,
 		"4.5.0-alpha4":   4,
 		"5.4.9-alpha1":   1,
 		"5.0.0-alpha123": 123,
