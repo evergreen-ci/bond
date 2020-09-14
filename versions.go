@@ -440,7 +440,7 @@ func (s MongoDBVersionSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-// String() adds suport for the Stringer interface, which makes it
+// String() adds support for the Stringer interface, which makes it
 // possible to print slices of MongoDB versions as comma separated
 // lists.
 func (s MongoDBVersionSlice) String() string {
