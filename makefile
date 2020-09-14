@@ -90,7 +90,7 @@ lint-%:$(buildDir)/output.%.lint
 #    that the tests actually need to run. (The "build" target is
 #    intentional and makes these targets rerun as expected.)
 testArgs := -v -timeout=15m
-ifneq (,$(DISABLE_COVERAGE))
+ifeq (,$(DISABLE_COVERAGE))
 	testArgs += -cover
 endif
 ifneq (,$(RACE_DETECTOR))
