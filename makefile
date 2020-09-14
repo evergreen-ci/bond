@@ -60,8 +60,7 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 
 
 # userfacing targets for basic build and development operations
-lint:$(lintOutput)
-build:$(srcFiles)
+compile $(buildDir):$(srcFiles)
 	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
 lint:$(lintOutput)
