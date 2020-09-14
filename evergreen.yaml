@@ -27,7 +27,7 @@ functions:
     params:
       working_dir: gopath/src/github.com/evergreen-ci/bond
       binary: make
-      args: ["${make_args|}", "${target}"]
+      args: ["${target}"]
       add_expansions_to_env: true
       env:
         GOPATH: ${workdir}/gopath
@@ -57,13 +57,6 @@ tasks:
   - <<: *run-build
     tags: ["report"]
     name: lint-recall
-
-  - name: compile-base
-    tags: ["legacy-check"]
-    commands:
-      - func: get-project
-      - func: run-make
-        vars: { target: "${task_name}" }
 
 task_groups:
   - name: lintGroup
@@ -107,7 +100,6 @@ buildvariants:
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
       RACE_DETECTOR: true
       SKIP_DOCKER_TESTS: true
-      make_args: -k
     run_on:
       - archlinux-small
       - archlinux-large
@@ -120,7 +112,6 @@ buildvariants:
       DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.13
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      make_args: -k
     run_on:
       - archlinux-small
       - archlinux-large
@@ -131,28 +122,13 @@ buildvariants:
     display_name: Ubuntu 16.04
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.11
-      GO_BIN_PATH: /opt/golang/go1.11/bin/go
-      DOCKER_IMAGE: ubuntu
-      make_args: -k
+      GOROOT: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
     run_on:
       - ubuntu1604-small
       - ubuntu1604-large
     tasks:
       - name: "testGroup"
-
-  - name: ubuntu1604-go1.9
-    display_name: Ubuntu 16.04 (go1.9)
-    expansions:
-      DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.9
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
-      make_args: -k
-    run_on:
-      - ubuntu1604-small
-      - ubuntu1604-large
-    tasks:
-      - name: ".legacy-check"
 
   - name: macos
     display_name: macOS
@@ -160,7 +136,6 @@ buildvariants:
       DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.11
       GO_BIN_PATH: /opt/golang/go1.11/bin/go
-      make_args: -k
     run_on:
       - macos-1014
     tasks:
@@ -175,6 +150,5 @@ buildvariants:
       DISABLE_COVERAGE: true
       GOROOT: C:/golang/go1.11
       GO_BIN_PATH: /cygdrive/c/golang/go1.11/bin/go
-      make_args: -k
     tasks:
       - name: "testGroup"
