@@ -387,6 +387,7 @@ func (s *VersionSuite) TestIsDevelopmentRelease() {
 		"3.4.0-alpha12":  false,
 		"4.5.0-alpha":    true,
 		"4.5.0-alpha4":   true,
+		"4.6.0-alpha":    true,
 		"5.0.0-alpha123": true,
 		"5.0.0-rc12":     false,
 		"5.0.0":          false,
@@ -402,9 +403,10 @@ func (s *VersionSuite) TestIsDevelopmentRelease() {
 func (s *VersionSuite) TestDevelopmentReleaseNumber() {
 	cases := map[string]int{
 		"3.4.0-alpha12":  -1,
-		"4.6.0":          -1,
-		"4.5.0-alpha":    0,
+		"4.5.0-alpha":    -1,
 		"4.5.0-alpha4":   4,
+		"4.6.0":          -1,
+		"4.6.0-alpha":    -1,
 		"5.4.9-alpha1":   1,
 		"5.0.0-alpha123": 123,
 		"5.0.0-rc12":     -1,
@@ -440,8 +442,8 @@ func (s *VersionSuite) TestLTS() {
 		"4.5.0":          "",
 		"4.8.0":          "",
 		"5.0.0":          "5.0",
-		"5.0.4-alpha123": 5.0,
-		"5.0.9":          true,
+		"5.0.4-alpha123": "5.0",
+		"5.0.9":          "5.0",
 		"5.3.8":          "5.0",
 		"6.1.1":          "6.0",
 	}

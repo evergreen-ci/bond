@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	endOfLegacy   = "4.5.0-alpha0"
+	endOfLegacy   = "4.5.0-alpha"
 	firstLTS      = "5.0.0"
 	devReleaseTag = "alpha"
 )
@@ -154,11 +154,15 @@ func (v *NewMongoDBVersion) DevelopmentReleaseNumber() int {
 // If the parsed version is before 4.5.0, then we use the legacy structure.
 // Otherwise, we use the modern versioning scheme.
 func CreateMongoDBVersion(version string) (MongoDBVersion, error) {
-	endOfLegacyVersion, _ := semver.Parse(endOfLegacy)
+	endOfLegacyVersion, err := semver.Parse(endOfLegacy)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing end of legacy version")
+	}
 	v, err := createLegacyMongoDBVersion(version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating initial version")
 	}
+
 	if v.Parsed().LT(endOfLegacyVersion) {
 		return v, nil
 	}
