@@ -42,6 +42,7 @@ func (s *VersionSuite) TestValidVersionsParseWithoutErrors() {
 		"3.0.2-",
 		"3.0.1-pre-",
 		"4.7.7",
+		"4.8.0-alpha-26-g610cb6a",
 		"5.0.0-rc12",
 		"5.1.2-alpha",
 		"5.1.2-alpha14",
