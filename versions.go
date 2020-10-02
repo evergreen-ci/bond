@@ -186,7 +186,6 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 		// the dev release number.
 		split := strings.Split(v.tag, "-")
 		if len(split) > 0 && len(split[0]) > len(devReleaseTag) {
-			fmt.Println(split)
 			v.devReleaseNumber, err = strconv.Atoi(split[0][len(devReleaseTag):])
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't parse development release number")
