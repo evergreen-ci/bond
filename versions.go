@@ -181,8 +181,13 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 	if strings.Contains(v.tag, devReleaseTag) {
 		v.isDev = false
 		v.isDevRelease = true
-		if len(v.tag) > len(devReleaseTag) {
-			v.devReleaseNumber, err = strconv.Atoi(v.tag[len(devReleaseTag):])
+		// Releases triggered by the waterfall use the git describe of
+		// the commit, we need to remove that before attempting to get
+		// the dev release number.
+		split := strings.Split(v.tag, "-")
+		if len(split) > 0 && len(split[0]) > len(devReleaseTag) {
+			fmt.Println(split)
+			v.devReleaseNumber, err = strconv.Atoi(split[0][len(devReleaseTag):])
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't parse development release number")
 			}
