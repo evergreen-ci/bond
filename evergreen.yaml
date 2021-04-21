@@ -101,8 +101,8 @@ buildvariants:
       RACE_DETECTOR: true
       SKIP_DOCKER_TESTS: true
     run_on:
-      - archlinux-small
-      - archlinux-large
+      - archlinux-new-small
+      - archlinux-new-large
     tasks:
       - name: "testGroup"
 
@@ -113,8 +113,8 @@ buildvariants:
       GOROOT: /opt/golang/go1.13
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
     run_on:
-      - archlinux-small
-      - archlinux-large
+      - archlinux-new-small
+      - archlinux-new-large
     tasks: 
       - name: "lintGroup"
 
