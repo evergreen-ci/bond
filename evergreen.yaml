@@ -28,7 +28,7 @@ functions:
       working_dir: gopath/src/github.com/evergreen-ci/bond
       binary: make
       args: ["${target}"]
-      add_expansions_to_env: true
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GO_BIN_PATH", "GOROOT", "RACE_DETECTOR"]
       env:
         GOPATH: ${workdir}/gopath
   parse-results:
@@ -77,7 +77,7 @@ task_groups:
       - func: run-make
         vars: { target: "docker-setup" }
         variants:
-          - ubuntu1604
+          - ubuntu
     setup_task:
       - func: run-make
         vars: { target: "clean-results" }
@@ -85,7 +85,7 @@ task_groups:
       - func: run-make
         vars: { target: "docker-cleanup" }
         variants:
-          - ubuntu1604
+          - ubuntu
       - func: parse-results
 
 #######################################
@@ -96,10 +96,9 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.13
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       RACE_DETECTOR: true
-      SKIP_DOCKER_TESTS: true
     run_on:
       - archlinux-new-small
       - archlinux-new-large
@@ -110,23 +109,23 @@ buildvariants:
     display_name: Lint (Arch Linux)
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.13
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
     run_on:
       - archlinux-new-small
       - archlinux-new-large
     tasks: 
       - name: "lintGroup"
 
-  - name: ubuntu1604
-    display_name: Ubuntu 16.04
+  - name: ubuntu
+    display_name: Ubuntu 18.04
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.9
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
     run_on:
-      - ubuntu1604-small
-      - ubuntu1604-large
+      - ubuntu1804-small
+      - ubuntu1804-large
     tasks:
       - name: "testGroup"
 
@@ -134,8 +133,8 @@ buildvariants:
     display_name: macOS
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.11
-      GO_BIN_PATH: /opt/golang/go1.11/bin/go
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
     run_on:
       - macos-1014
     tasks:
@@ -148,7 +147,7 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: C:/golang/go1.11
-      GO_BIN_PATH: /cygdrive/c/golang/go1.11/bin/go
+      GOROOT: C:/golang/go1.16
+      GO_BIN_PATH: /cygdrive/c/golang/go1.16/bin/go
     tasks:
       - name: "testGroup"
