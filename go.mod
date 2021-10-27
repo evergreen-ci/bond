@@ -1,11 +1,10 @@
 module github.com/evergreen-ci/bond
 
-go 1.17
+go 1.16
 
 require (
 	github.com/blang/semver v3.1.0+incompatible
 	github.com/google/uuid v1.1.2-0.20190416172445-c2e93f3ae59f
-	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c
 	github.com/mongodb/grip v0.0.0-20211018154934-e661a71929d5
@@ -24,6 +23,7 @@ require (
 	github.com/dghubble/oauth1 v0.7.0 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/frankban/quicktest v1.14.0 // indirect
 	github.com/fuyufjh/splunk-hec-go v0.3.3 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -34,8 +34,6 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-xmpp v0.0.0-20210723025538-3871461df959 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
