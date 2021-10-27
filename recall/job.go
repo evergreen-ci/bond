@@ -125,7 +125,7 @@ func extractArchive(fn string) error {
 
 	if filepath.Ext(fn) == ".tgz" {
 		// there is no tar.gz because we renamed it in setURL()
-		if err := archiver.TarGz.Open(fn, dir); err != nil {
+		if err := archiver.NewTarGz().Unarchive(fn, dir); err != nil {
 			return errors.Wrap(err, "problem extracting archive")
 		}
 
@@ -160,7 +160,7 @@ func extractArchive(fn string) error {
 			}
 		}
 	} else if filepath.Ext(fn) == ".zip" {
-		if err := archiver.Zip.Open(fn, dir); err != nil {
+		if err := archiver.NewZip().Unarchive(fn, dir); err != nil {
 			return errors.Wrap(err, "problem extracting archive")
 		}
 		r, err := zip.OpenReader(fn)
