@@ -16,27 +16,32 @@ variables:
 #              Functions              #
 #######################################
 functions:
-  get-project:
-    command: git.get_project
-    type: system
-    params:
-      directory: gopath/src/github.com/evergreen-ci/bond
+  get-project-and-modules:
+    - command: git.get_project
+      type: system
+      params:
+        directory: bond
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: bond
+        binary: make
+        args: ["mod-tidy"]
+        include_expansions_in_env: ["GOROOT"]
   run-make:
     command: subprocess.exec
     type: test
     params:
-      working_dir: gopath/src/github.com/evergreen-ci/bond
+      working_dir: bond
       binary: make
       args: ["${target}"]
       include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
-      env:
-        GOPATH: ${workdir}/gopath
   parse-results:
     command: gotest.parse_files
     type: setup
     params:
       files:
-        - "gopath/src/github.com/evergreen-ci/bond/build/output.*"
+        - "bond/build/output.*"
 
 #######################################
 #                Tasks                #
@@ -60,32 +65,24 @@ tasks:
 
 task_groups:
   - name: lintGroup
-    tasks: [ ".report"]
+    tasks: [".report"]
     max_hosts: 2
     setup_group:
-      - func: get-project
+      - func: get-project-and-modules
     setup_task:
       - func: run-make
         vars: { target: "clean-results" }
     teardown_task:
       - func: parse-results
   - name: testGroup
-    tasks: [ ".test"]
+    tasks: [".test"]
     max_hosts: 2
     setup_group:
-      - func: get-project
-      - func: run-make
-        vars: { target: "docker-setup" }
-        variants:
-          - ubuntu
+      - func: get-project-and-modules
     setup_task:
       - func: run-make
         vars: { target: "clean-results" }
     teardown_task:
-      - func: run-make
-        vars: { target: "docker-cleanup" }
-        variants:
-          - ubuntu
       - func: parse-results
 
 #######################################
