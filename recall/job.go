@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/bond"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
