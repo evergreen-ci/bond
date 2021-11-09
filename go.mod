@@ -22,7 +22,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
-	github.com/mholt/archiver/v3 v3.5.0
+	github.com/mholt/archiver/v3 v3.5.1
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	go.mongodb.org/mongo-driver v1.7.3 // indirect
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
