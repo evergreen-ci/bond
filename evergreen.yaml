@@ -63,6 +63,15 @@ tasks:
     tags: ["report"]
     name: lint-recall
 
+  - name: verify-mod-tidy
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: bond
+      - func: run-make
+        vars: { target: "${task_name}" }
+
 task_groups:
   - name: lintGroup
     tasks: [".report"]
@@ -110,7 +119,8 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     tasks: 
-      - name: "lintGroup"
+      - name: lintGroup
+      - name: verify-mod-tidy
 
   - name: ubuntu
     display_name: Ubuntu 18.04
