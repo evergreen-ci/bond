@@ -3,7 +3,7 @@ module github.com/evergreen-ci/bond
 go 1.16
 
 require (
-	github.com/blang/semver v3.1.0+incompatible
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c
 	github.com/mongodb/grip v0.0.0-20211101151816-abbea0c0d465
