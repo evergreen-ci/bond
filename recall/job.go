@@ -167,6 +167,7 @@ func extractArchive(fn string) error {
 		if err != nil {
 			return errors.Wrap(err, "parsing archive")
 		}
+		defer r.Close()
 
 		for _, f := range r.File {
 			if strings.HasSuffix(f.Name, "mongod.exe") {
