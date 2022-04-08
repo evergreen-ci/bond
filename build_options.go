@@ -36,9 +36,9 @@ func (o BuildOptions) GetBuildInfo(version string) BuildInfo {
 func (o BuildOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.NewWhen(o.Target == "", "missing target")
-	catcher.NewWhen(o.Arch == "", "missing arch")
-	catcher.NewWhen(o.Edition == "", "missing edition")
+	catcher.NewWhen(o.Target == "", "must specify a target")
+	catcher.NewWhen(o.Arch == "", "must specify an arch")
+	catcher.NewWhen(o.Edition == "", "must specify an edition")
 
 	return catcher.Resolve()
 }

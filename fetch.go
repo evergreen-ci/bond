@@ -101,7 +101,7 @@ func DownloadFile(ctx context.Context, url, fileName string) error {
 
 	if resp.StatusCode >= 300 {
 		grip.Warning(os.Remove(fileName))
-		return errors.Errorf("received status code %d (%s) for %s", resp.StatusCode, resp.Status, url)
+		return errors.Errorf("received status code %d (%s) for request to URL '%s'", resp.StatusCode, resp.Status, url)
 	}
 
 	n, err := io.Copy(output, resp.Body)

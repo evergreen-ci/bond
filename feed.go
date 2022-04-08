@@ -244,7 +244,7 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) 
 
 			version, ok := feed.GetVersion(rel)
 			if !ok {
-				catcher.Add(errors.Errorf("no version defined for release '%s'", rel))
+				catcher.Errorf("no version defined for release '%s'", rel)
 				continue
 			}
 			dl, err := version.GetDownload(options)
