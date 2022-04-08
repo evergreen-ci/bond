@@ -19,11 +19,11 @@ func createDirectory(path string) error {
 	if os.IsNotExist(err) {
 		err := os.MkdirAll(path, 0755)
 		if err != nil {
-			return errors.Wrapf(err, "problem crating directory %s", path)
+			return errors.Wrapf(err, "creating directory '%s'", path)
 		}
 		grip.Noticeln("created directory:", path)
 	} else if !stat.IsDir() {
-		return errors.Errorf("%s exists and is not a directory", path)
+		return errors.Errorf("path '%s' already exists and is not a directory", path)
 	}
 
 	return nil
@@ -44,7 +44,7 @@ func CacheDownload(ctx context.Context, ttl time.Duration, url, path string, for
 		if (ttl > 0 && age > ttl) || force {
 			grip.Infof("removing stale (%s) file (%s)", age, path)
 			if err = os.Remove(path); err != nil {
-				return nil, errors.Wrap(err, "problem removing stale feed.")
+				return nil, errors.Wrap(err, "removing stale feed")
 			}
 		}
 	}
@@ -70,22 +70,22 @@ func CacheDownload(ctx context.Context, ttl time.Duration, url, path string, for
 // fileName. Also creates enclosing directories as needed.
 func DownloadFile(ctx context.Context, url, fileName string) error {
 	if err := createDirectory(filepath.Dir(fileName)); err != nil {
-		return errors.Wrapf(err, "problem creating enclosing directory for %s", fileName)
+		return errors.Wrapf(err, "creating enclosing directory for file '%s'", fileName)
 	}
 
 	if _, err := os.Stat(fileName); !os.IsNotExist(err) {
-		return errors.Errorf("'%s' file exists", fileName)
+		return errors.Errorf("file '%s' already exists", fileName)
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return errors.Wrap(err, "problem building request")
+		return errors.Wrap(err, "building request")
 	}
 	req = req.WithContext(ctx)
 
 	output, err := os.Create(fileName)
 	if err != nil {
-		return errors.Wrapf(err, "could not create file for package '%s'", fileName)
+		return errors.Wrapf(err, "creating file for package '%s'", fileName)
 	}
 	defer output.Close()
 
@@ -95,19 +95,19 @@ func DownloadFile(ctx context.Context, url, fileName string) error {
 	grip.Noticeln("downloading:", fileName)
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "problem downloading file")
+		return errors.Wrap(err, "downloading file")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
 		grip.Warning(os.Remove(fileName))
-		return errors.Errorf("encountered error %d (%s) for %s", resp.StatusCode, resp.Status, url)
+		return errors.Errorf("received status code %d (%s) for %s", resp.StatusCode, resp.Status, url)
 	}
 
 	n, err := io.Copy(output, resp.Body)
 	if err != nil {
 		grip.Warning(os.Remove(fileName))
-		return errors.Wrapf(err, "problem writing %s to file %s", url, fileName)
+		return errors.Wrapf(err, "writing URL '%s' to file '%s'", url, fileName)
 	}
 
 	grip.Debugf("%d bytes downloaded. (%s)", n, fileName)

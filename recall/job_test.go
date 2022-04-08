@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,15 +32,13 @@ func TestDownloadJobSuite(t *testing.T) {
 func (s *DownloadJobSuite) SetupSuite() {
 	var err error
 	s.require = s.Require()
-	// s.tempDir, err = ioutil.TempDir("", uuid.NewV4().String())
 	s.tempDir, err = ioutil.TempDir("", "")
 	s.require.NoError(err)
 }
 
 func (s *DownloadJobSuite) TearDownSuite() {
-	grip.Warningln("leaking tempdir for quicker tests:", s.tempDir)
-	// err := os.RemoveAll(s.tempDir)
-	// s.require.NoError(err)
+	err := os.RemoveAll(s.tempDir)
+	s.require.NoError(err)
 }
 
 func (s *DownloadJobSuite) SetupTest() {

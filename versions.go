@@ -188,7 +188,7 @@ func createNewMongoDBVersion(parsedVersion LegacyMongoDBVersion) (*NewMongoDBVer
 		if len(split) > 0 && len(split[0]) > len(devReleaseTag) {
 			v.devReleaseNumber, err = strconv.Atoi(split[0][len(devReleaseTag):])
 			if err != nil {
-				return nil, errors.Wrapf(err, "couldn't parse development release number")
+				return nil, errors.Wrapf(err, "parsing development release number")
 			}
 		}
 	}
@@ -217,7 +217,7 @@ func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 
 	parsed, err := semver.Parse(version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing '%s'", version)
+		return nil, errors.Wrapf(err, "parsing version '%s'", version)
 	}
 	v.parsed = parsed
 
@@ -235,7 +235,7 @@ func createLegacyMongoDBVersion(version string) (*LegacyMongoDBVersion, error) {
 
 			v.rcNumber, err = strconv.Atoi(rcPart[0][2:])
 			if err != nil {
-				return nil, errors.Wrapf(err, "couldn't parse release candidate number")
+				return nil, errors.Wrapf(err, "parsing release candidate number")
 			}
 			if len(tagParts) > 2 {
 				v.isDev = true

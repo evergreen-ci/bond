@@ -77,7 +77,7 @@ type releaseInfo struct {
 func collectReleaseInfo() (*releaseInfo, error) {
 	files, err := filepath.Glob("/etc/*release")
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding release file")
+		return nil, errors.Wrap(err, "finding release file")
 	}
 
 	if len(files) == 0 {
@@ -158,7 +158,7 @@ func (i *releaseInfo) addExtraInfo() error {
 		}
 
 		if name != "RedHatEnterpriseServer" || !strings.Contains(name, "CentOS") {
-			return errors.Errorf("release named %s is not supported", name)
+			return errors.Errorf("release named '%s' is not supported", name)
 		}
 
 		ver, err := commandOutput("lsb_release", "-s", "-r")

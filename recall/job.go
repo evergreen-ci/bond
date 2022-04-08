@@ -55,11 +55,11 @@ func newDownloadJob() *DownloadFileJob {
 func NewDownloadJob(url, path string, force bool) (*DownloadFileJob, error) {
 	j := newDownloadJob()
 	if err := j.setURL(url); err != nil {
-		return nil, errors.Wrap(err, "problem constructing Job object (url)")
+		return nil, errors.Wrap(err, "setting URL for download job")
 	}
 
 	if err := j.setDirectory(path); err != nil {
-		return nil, errors.Wrap(err, "problem constructing Job object (directory)")
+		return nil, errors.Wrap(err, "setting directory for download job")
 	}
 
 	fn := j.getFileName()
@@ -99,7 +99,7 @@ func (j *DownloadFileJob) Run(ctx context.Context) {
 	}
 
 	if err := bond.DownloadFile(ctx, j.URL, fn); err != nil {
-		j.handleError(errors.Wrapf(err, "problem downloading file %s", fn))
+		j.handleError(errors.Wrapf(err, "downloading file '%s'", fn))
 		return
 	}
 
@@ -109,7 +109,7 @@ func (j *DownloadFileJob) Run(ctx context.Context) {
 	})
 
 	if err := extractArchive(fn); err != nil {
-		j.handleError(errors.Wrap(err, "problem extracting artifacts"))
+		j.handleError(errors.Wrapf(err, "extracting artifacts '%s'", fn))
 		return
 	}
 }
@@ -126,18 +126,18 @@ func extractArchive(fn string) error {
 	if filepath.Ext(fn) == ".tgz" {
 		// there is no tar.gz because we renamed it in setURL()
 		if err := archiver.NewTarGz().Unarchive(fn, dir); err != nil {
-			return errors.Wrap(err, "problem extracting archive")
+			return errors.Wrap(err, "extracting archive")
 		}
 
 		f, err := os.Open(fn)
 		if err != nil {
-			return errors.Wrap(err, "error opening file")
+			return errors.Wrap(err, "opening file")
 		}
 		defer f.Close()
 
 		gzr, err := gzip.NewReader(f)
 		if err != nil {
-			return errors.Wrap(err, "problem reading gzip")
+			return errors.Wrap(err, "reading gzip")
 		}
 		defer gzr.Close()
 
@@ -145,7 +145,7 @@ func extractArchive(fn string) error {
 		for {
 			header, err := archive.Next()
 			if err == io.EOF {
-				return errors.Wrap(err, "could not read archive contents")
+				return errors.Wrap(err, "reading archive contents")
 			}
 			if strings.HasSuffix(header.Name, "mongod") {
 				dirName := filepath.Dir(filepath.Dir(header.Name))
@@ -153,7 +153,7 @@ func extractArchive(fn string) error {
 					if err := os.Rename(filepath.Join(dir, dirName),
 						filepath.Join(dir, baseName)); err != nil {
 
-						return errors.Wrapf(err, "error renaming %s to %s", dirName, baseName)
+						return errors.Wrapf(err, "renaming directory '%s' to '%s'", dirName, baseName)
 					}
 				}
 				break
@@ -161,11 +161,11 @@ func extractArchive(fn string) error {
 		}
 	} else if filepath.Ext(fn) == ".zip" {
 		if err := archiver.NewZip().Unarchive(fn, dir); err != nil {
-			return errors.Wrap(err, "problem extracting archive")
+			return errors.Wrap(err, "extracting archive")
 		}
 		r, err := zip.OpenReader(fn)
 		if err != nil {
-			return errors.Wrap(err, "problem parsing archive")
+			return errors.Wrap(err, "parsing archive")
 		}
 
 		for _, f := range r.File {
@@ -177,13 +177,13 @@ func extractArchive(fn string) error {
 					if err := os.Rename(filepath.Join(dir, dirName),
 						filepath.Join(dir, baseName)); err != nil {
 
-						return errors.Wrapf(err, "error renaming %s to %s", dirName, baseName)
+						return errors.Wrapf(err, "renaming directory '%s' to '%s'", dirName, baseName)
 					}
 				}
 			}
 		}
 	} else {
-		return errors.Errorf("file %s is in unsupported archive format", fn)
+		return errors.Errorf("file '%s' is in unsupported archive format", fn)
 	}
 
 	grip.Debug(message.Fields{
@@ -231,8 +231,7 @@ func (j *DownloadFileJob) setDirectory(path string) error {
 	if stat, err := os.Stat(path); !os.IsNotExist(err) && !stat.IsDir() {
 		// if the path exists and isn't a directory, then we
 		// won't be able to download into it:
-		return errors.Errorf("%s is not a directory, cannot download files into it",
-			path)
+		return errors.Errorf("'%s' is not a directory, cannot download files into it", path)
 	}
 
 	j.Directory = path
@@ -241,11 +240,11 @@ func (j *DownloadFileJob) setDirectory(path string) error {
 
 func (j *DownloadFileJob) setURL(url string) error {
 	if !strings.HasPrefix(url, "http") {
-		return errors.Errorf("%s is not a valid url", url)
+		return errors.Errorf("'%s' is not a valid url", url)
 	}
 
 	if strings.HasSuffix(url, "/") {
-		return errors.Errorf("%s does not contain a valid filename component", url)
+		return errors.Errorf("'%s' does not contain a valid filename component", url)
 	}
 
 	j.URL = url

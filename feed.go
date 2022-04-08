@@ -32,11 +32,11 @@ type ArtifactsFeed struct {
 func GetArtifactsFeed(ctx context.Context, path string) (*ArtifactsFeed, error) {
 	feed, err := NewArtifactsFeed(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem building feed")
+		return nil, errors.Wrap(err, "building feed")
 	}
 
 	if err := feed.Populate(ctx, 4*time.Hour); err != nil {
-		return nil, errors.Wrap(err, "problem getting feed data")
+		return nil, errors.Wrap(err, "getting feed data")
 	}
 
 	return feed, nil
@@ -72,7 +72,7 @@ func NewArtifactsFeed(path string) (*ArtifactsFeed, error) {
 		// if the thing we think should be the json file
 		// exists but isn't a file (i.e. directory,) then this
 		// should be an error.
-		return nil, errors.Errorf("path %s not a json file directory", path)
+		return nil, errors.Errorf("path '%s' not a JSON file directory", path)
 	}
 
 	return f, nil
@@ -86,11 +86,11 @@ func (feed *ArtifactsFeed) Populate(ctx context.Context, ttl time.Duration) erro
 	data, err := CacheDownload(ctx, ttl, "http://downloads.mongodb.org/full.json", feed.path, false)
 
 	if err != nil {
-		return errors.Wrap(err, "problem getting feed data")
+		return errors.Wrap(err, "getting feed data")
 	}
 
 	if err = feed.Reload(data); err != nil {
-		return errors.Wrap(err, "problem reloading feed")
+		return errors.Wrap(err, "reloading feed")
 	}
 
 	return nil
@@ -105,7 +105,7 @@ func (feed *ArtifactsFeed) Reload(data []byte) error {
 
 	err := json.Unmarshal(data, feed)
 	if err != nil {
-		return errors.Wrap(err, "problem converting data from json")
+		return errors.Wrap(err, "converting data from JSON")
 	}
 
 	if len(feed.table) > 0 {
@@ -148,12 +148,12 @@ func (feed *ArtifactsFeed) GetLatestArchive(series string, options BuildOptions)
 
 	dl, err := version.GetDownload(options)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem fetching download information for series '%s'", series)
+		return "", errors.Wrapf(err, "fetching download information for series '%s'", series)
 	}
 
 	isDev, err := version.isDevelopmentSeries()
 	if err != nil {
-		return "", errors.Wrap(err, "problem determining version type")
+		return "", errors.Wrap(err, "determining version type")
 	}
 
 	// If it's a development series, we just replace the version with the word latest.
@@ -171,12 +171,12 @@ func (feed *ArtifactsFeed) GetCurrentArchive(series string, options BuildOptions
 
 	version, err := feed.GetLatestRelease(series)
 	if err != nil {
-		return "", errors.Wrap(err, "could not find version for: "+series)
+		return "", errors.Wrapf(err, "finding version for series '%s' ", series)
 	}
 
 	dl, err := version.GetDownload(options)
 	if err != nil {
-		return "", errors.Wrap(err, "problem finding version")
+		return "", errors.Wrap(err, "finding version")
 	}
 
 	return dl.Archive.URL, nil
@@ -201,7 +201,7 @@ func (feed *ArtifactsFeed) GetLatestRelease(series string) (*ArtifactVersion, er
 		}
 	}
 
-	return nil, errors.Errorf("could not find a current version for series: %s", series)
+	return nil, errors.Errorf("could not find a current version for series '%s'", series)
 }
 
 // GetArchives provides an iterator for all archives given a list of
@@ -244,7 +244,7 @@ func (feed *ArtifactsFeed) GetArchives(releases []string, options BuildOptions) 
 
 			version, ok := feed.GetVersion(rel)
 			if !ok {
-				catcher.Add(errors.Errorf("no version defined for %s", rel))
+				catcher.Add(errors.Errorf("no version defined for release '%s'", rel))
 				continue
 			}
 			dl, err := version.GetDownload(options)

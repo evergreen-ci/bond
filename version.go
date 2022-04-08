@@ -40,7 +40,7 @@ func (version *ArtifactVersion) refresh() {
 func (version *ArtifactVersion) isDevelopmentSeries() (bool, error) {
 	parsedVersion, err := CreateMongoDBVersion(version.Version)
 	if err != nil {
-		return false, errors.Wrap(err, "could not parse version")
+		return false, errors.Wrap(err, "parsing version")
 	}
 	return parsedVersion.IsDevelopmentSeries(), nil
 }
@@ -63,11 +63,11 @@ func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload,
 	if key.Target == "osx" {
 		parsedVersion, err := CreateMongoDBVersion(version.Version)
 		if err != nil {
-			return ArtifactDownload{}, errors.Wrap(err, "could not parse version")
+			return ArtifactDownload{}, errors.Wrap(err, "parsing version")
 		}
 		macosVersion, err := CreateMongoDBVersion("4.1.1")
 		if err != nil {
-			return ArtifactDownload{}, errors.Wrap(err, "could not parse version for comparison")
+			return ArtifactDownload{}, errors.Wrap(err, "parsing comparison version")
 		}
 		if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
 			key.Target = "macos"
@@ -80,8 +80,7 @@ func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload,
 
 	dl, ok := version.table[key]
 	if !ok {
-		return ArtifactDownload{}, errors.Errorf("there is no build for %s (%s) in edition %s",
-			key.Target, key.Arch, key.Edition)
+		return ArtifactDownload{}, errors.Errorf("there is no build for '%s' ('%s') in edition '%s'", key.Target, key.Arch, key.Edition)
 	}
 
 	return dl, nil
