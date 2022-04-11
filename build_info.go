@@ -48,19 +48,19 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 
 	edition, err := getEdition(fileName)
 	if err != nil {
-		return BuildInfo{}, errors.Wrap(err, "problem resolving edition")
+		return BuildInfo{}, errors.Wrap(err, "resolving edition")
 	}
 	info.Options.Edition = edition
 
 	version, err := getVersion(fileName, edition)
 	if err != nil {
-		return BuildInfo{}, errors.Wrap(err, "problem resolving version")
+		return BuildInfo{}, errors.Wrap(err, "resolving version")
 	}
 	info.Version = version
 
 	target, err := getTarget(fileName)
 	if err != nil {
-		return BuildInfo{}, errors.Wrap(err, "problem resolving target")
+		return BuildInfo{}, errors.Wrap(err, "resolving target")
 	}
 	info.Options.Target = target
 
@@ -70,7 +70,7 @@ func GetInfoFromFileName(fileName string) (BuildInfo, error) {
 func getVersion(fn string, edition MongoDBEdition) (string, error) {
 	parts := strings.Split(fn, "-")
 	if len(parts) <= 3 {
-		return "", errors.Errorf("path %s does not contain enough elements to include a version", fn)
+		return "", errors.Errorf("path '%s' must have at least 3 dash-separated parts", fn)
 	}
 
 	if strings.Contains(fn, "rc") {
@@ -107,7 +107,7 @@ func getEdition(fn string) (MongoDBEdition, error) {
 		}
 	}
 
-	return "", errors.Errorf("path %s does not have a valid edition", fn)
+	return "", errors.Errorf("path '%s' does not have a valid edition", fn)
 }
 
 func getTarget(fn string) (string, error) {
@@ -173,7 +173,7 @@ func getTarget(fn string) (string, error) {
 		return "sunos5", nil
 	}
 
-	return "", errors.Errorf("could not determine platform for %s", fn)
+	return "", errors.Errorf("could not determine platform for file '%s'", fn)
 }
 
 func isArch(part string) bool {

@@ -32,23 +32,23 @@ func FetchReleases(ctx context.Context, releases []string, path string, options 
 
 	feed, err := bond.GetArtifactsFeed(ctx, path)
 	if err != nil {
-		return errors.Wrap(err, "problem generating data feed")
+		return errors.Wrap(err, "generating data feed")
 	}
 
 	q := queue.NewLocalLimitedSize(4, 1048)
 	if err := q.Start(ctx); err != nil {
-		return errors.Wrap(err, "problem starting queue")
+		return errors.Wrap(err, "starting queue")
 	}
 
 	urls, errGroupOne := feed.GetArchives(releases, options)
 	jobs, errGroupTwo := createJobs(path, urls)
 
 	if err := amboy.PopulateQueue(ctx, q, jobs); err != nil {
-		return errors.Wrap(err, "problem adding jobs to queue")
+		return errors.Wrap(err, "adding jobs to queue")
 	}
 
 	if err := aggregateErrors(errGroupOne, errGroupTwo); err != nil {
-		return errors.Wrap(err, "problem populating jobs")
+		return errors.Wrap(err, "populating jobs")
 	}
 
 	grip.Debugf("waiting for %d download jobs to complete", q.Stats(ctx).Total)
@@ -56,7 +56,7 @@ func FetchReleases(ctx context.Context, releases []string, path string, options 
 	grip.Debug("all download tasks complete, processing errors now")
 
 	if err := amboy.ResolveErrors(ctx, q); err != nil {
-		return errors.Wrap(err, "problem(s) detected in download jobs")
+		return errors.Wrap(err, "resolving download job errors")
 	}
 
 	return nil

@@ -3,11 +3,11 @@ package recall
 import (
 	"errors"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/bond"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -27,15 +27,13 @@ func TestReactorSuite(t *testing.T) {
 func (s *ReactorSuite) SetupSuite() {
 	var err error
 	s.require = s.Require()
-	// s.tempDir, err = ioutil.TempDir("", uuid.NewV4().String())
 	s.tempDir, err = ioutil.TempDir("", "")
 	s.require.NoError(err)
 }
 
 func (s *ReactorSuite) TearDownSuite() {
-	grip.Warningln("leaking tempdir for quicker tests:", s.tempDir)
-	// err := os.RemoveAll(s.tempDir)
-	// s.require.NoError(err)
+	err := os.RemoveAll(s.tempDir)
+	s.require.NoError(err)
 }
 
 func (s *ReactorSuite) TestJobCreator() {

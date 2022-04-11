@@ -2,9 +2,8 @@ package bond
 
 import (
 	"encoding/json"
-	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/mongodb/grip"
 )
 
 // BuildOptions is a common method to describe a build variant.
@@ -35,24 +34,11 @@ func (o BuildOptions) GetBuildInfo(version string) BuildInfo {
 // Validate checks a BuildOption structure and ensures that there are
 // no errors.
 func (o BuildOptions) Validate() error {
-	var errs []string
+	catcher := grip.NewBasicCatcher()
 
-	if o.Target == "" {
-		errs = append(errs, "target definition is missing")
-	}
+	catcher.NewWhen(o.Target == "", "must specify a target")
+	catcher.NewWhen(o.Arch == "", "must specify an arch")
+	catcher.NewWhen(o.Edition == "", "must specify an edition")
 
-	if o.Arch == "" {
-		errs = append(errs, "arch definition is missing")
-	}
-
-	if o.Edition == "" {
-		errs = append(errs, "edition definition is missing")
-	}
-
-	if len(errs) != 0 {
-		return errors.Errorf("%d errors: [%s]",
-			len(errs), strings.Join(errs, "; "))
-	}
-
-	return nil
+	return catcher.Resolve()
 }

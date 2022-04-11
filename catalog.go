@@ -31,17 +31,17 @@ func NewCatalog(ctx context.Context, path string) (*BuildCatalog, error) {
 	var err error
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem resolving absolute path")
+		return nil, errors.Wrap(err, "resolving absolute path")
 	}
 
 	contents, err := getContents(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not find contents")
+		return nil, errors.Wrap(err, "finding content")
 	}
 
 	feed, err := GetArtifactsFeed(ctx, path)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not find build feed")
+		return nil, errors.Wrap(err, "finding build feed")
 	}
 
 	cache := &BuildCatalog{
@@ -69,8 +69,7 @@ func NewCatalog(ctx context.Context, path string) (*BuildCatalog, error) {
 	}
 
 	if catcher.HasErrors() {
-		return nil, errors.Wrapf(catcher.Resolve(),
-			"problem building build catalog from path: %s", path)
+		return nil, errors.Wrapf(catcher.Resolve(), "building build catalog from path '%s'", path)
 	}
 
 	return cache, nil
@@ -83,28 +82,28 @@ func NewCatalog(ctx context.Context, path string) (*BuildCatalog, error) {
 func (c *BuildCatalog) Add(fileName string) error {
 	fileName, err := filepath.Abs(fileName)
 	if err != nil {
-		return errors.Wrapf(err, "problem finding absolute path of %s object", fileName)
+		return errors.Wrapf(err, "finding absolute path of file '%s'", fileName)
 	}
 
 	if !strings.HasPrefix(fileName, c.Path) {
-		return errors.Errorf("cannot add %s to '%s' cache because it is not in the same root",
+		return errors.Errorf("cannot add file '%s' to '%s' cache because it is not in the same root",
 			fileName, c.Path)
 	}
 
 	info, err := GetInfoFromFileName(fileName)
 	if err != nil {
-		return errors.Wrap(err, "problem collecting information about build")
+		return errors.Wrap(err, "collecting information about build")
 	}
 
 	err = validateBuildArtifacts(fileName, info.Version)
 	if err != nil {
-		return errors.Wrapf(err, "problem validating contents of %s", fileName)
+		return errors.Wrapf(err, "validating contents of file '%s'", fileName)
 	}
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	if _, ok := c.table[info]; ok {
-		return errors.Errorf("path %s exists in cache", fileName)
+		return errors.Errorf("path '%s' exists in cache", fileName)
 	}
 
 	c.table[info] = fileName
@@ -153,8 +152,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 	if strings.Contains(version, "current") {
 		v, err := c.feed.GetLatestRelease(version)
 		if err != nil {
-			return "", errors.Wrapf(err,
-				"could not determine current stable release for %s series", version)
+			return "", errors.Wrapf(err, "determining current stable release for series '%s'", version)
 		}
 
 		version = v.Version
@@ -171,11 +169,11 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 			if runtime.GOOS == "darwin" {
 				parsedVersion, err := CreateMongoDBVersion(version)
 				if err != nil {
-					return "", errors.Wrap(err, "could not parse version")
+					return "", errors.Wrap(err, "parsing version")
 				}
 				macosVersion, err := CreateMongoDBVersion("4.1.1")
 				if err != nil {
-					return "", errors.Wrap(err, "could not parse version for comparison")
+					return "", errors.Wrap(err, "parsing comparison version")
 				}
 				if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
 					target = "macos"
@@ -186,7 +184,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 				target = runtime.GOOS
 			}
 
-			grip.Warning(message.WrapError(err, message.NewFormatted("could not determine distro, falling back to %s", target)))
+			grip.Warning(message.WrapError(err, message.NewFormatted("could not determine distro, falling back to '%s'", target)))
 		} else {
 			target = t
 		}
@@ -210,7 +208,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 
 	path, ok := c.table[info]
 	if !ok {
-		return "", errors.Errorf("could not find version %s, edition %s, target %s, arch %s in %s",
+		return "", errors.Errorf("could not find version '%s', edition '%s', target '%s', arch '%s' in path '%s'",
 			version, edition, target, arch, c.Path)
 	}
 
@@ -219,16 +217,16 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 
 func getContents(path string) ([]os.FileInfo, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return []os.FileInfo{}, errors.Errorf("path %s does not exist", path)
+		return []os.FileInfo{}, errors.Errorf("path '%s' does not exist", path)
 	}
 
 	contents, err := ioutil.ReadDir(path)
 	if err != nil {
-		return []os.FileInfo{}, errors.Wrapf(err, "problem fetching contents of %s", path)
+		return []os.FileInfo{}, errors.Wrapf(err, "fetching contents of path '%s'", path)
 	}
 
 	if len(contents) == 0 {
-		return []os.FileInfo{}, errors.Errorf("path %s is empty", path)
+		return []os.FileInfo{}, errors.Errorf("path '%s' is empty", path)
 	}
 
 	return contents, nil
@@ -239,7 +237,7 @@ func validateBuildArtifacts(path, version string) error {
 
 	contents, err := getContents(path)
 	if err != nil {
-		return errors.Wrapf(err, "problem finding contents for %s", version)
+		return errors.Wrapf(err, "finding contents for version '%s'", version)
 	}
 
 	pkg := make(map[string]struct{})
@@ -254,8 +252,7 @@ func validateBuildArtifacts(path, version string) error {
 		}
 
 		if _, ok := pkg[bin]; !ok {
-			catcher.Add(errors.Errorf("binary %s is missing from %s for %s",
-				bin, path, version))
+			catcher.Errorf("binary '%s' is missing from path '%s' for version '%s'", bin, path, version)
 		}
 	}
 
