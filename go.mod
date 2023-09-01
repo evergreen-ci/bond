@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/mongodb/amboy v0.0.0-20220408184825-b2a14e2c511d
 	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
 	github.com/pkg/errors v0.9.1
