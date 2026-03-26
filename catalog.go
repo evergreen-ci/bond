@@ -184,7 +184,7 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 				target = runtime.GOOS
 			}
 
-			grip.Warning(message.WrapError(err, message.NewFormatted("could not determine distro, falling back to '%s'", target)))
+			grip.Warning(context.Background(), message.WrapError(err, message.NewFormatted("could not determine distro, falling back to '%s'", target)))
 		} else {
 			target = t
 		}

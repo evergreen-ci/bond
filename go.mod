@@ -5,8 +5,8 @@ go 1.24.0
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/google/uuid v1.6.0
-	github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973
-	github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94
+	github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5
+	github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
 )

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func createDirectory(path string) error {
+func createDirectory(ctx context.Context, path string) error {
 	stat, err := os.Stat(path)
 
 	if os.IsNotExist(err) {
@@ -21,7 +21,7 @@ func createDirectory(path string) error {
 		if err != nil {
 			return errors.Wrapf(err, "creating directory '%s'", path)
 		}
-		grip.Noticeln("created directory:", path)
+		grip.Noticeln(ctx, "created directory:", path)
 	} else if !stat.IsDir() {
 		return errors.Errorf("path '%s' already exists and is not a directory", path)
 	}
@@ -42,7 +42,7 @@ func CacheDownload(ctx context.Context, ttl time.Duration, url, path string, for
 		age := time.Since(stat.ModTime())
 
 		if (ttl > 0 && age > ttl) || force {
-			grip.Infof("removing stale (%s) file (%s)", age, path)
+			grip.Infof(ctx, "removing stale (%s) file (%s)", age, path)
 			if err = os.Remove(path); err != nil {
 				return nil, errors.Wrap(err, "removing stale feed")
 			}
@@ -69,7 +69,7 @@ func CacheDownload(ctx context.Context, ttl time.Duration, url, path string, for
 // DownloadFile downloads a resource (url) into a file specified by
 // fileName. Also creates enclosing directories as needed.
 func DownloadFile(ctx context.Context, url, fileName string) error {
-	if err := createDirectory(filepath.Dir(fileName)); err != nil {
+	if err := createDirectory(ctx, filepath.Dir(fileName)); err != nil {
 		return errors.Wrapf(err, "creating enclosing directory for file '%s'", fileName)
 	}
 
@@ -92,7 +92,7 @@ func DownloadFile(ctx context.Context, url, fileName string) error {
 	client := GetHTTPClient()
 	defer PutHTTPClient(client)
 
-	grip.Noticeln("downloading:", fileName)
+	grip.Noticeln(ctx, "downloading:", fileName)
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "downloading file")
@@ -100,16 +100,16 @@ func DownloadFile(ctx context.Context, url, fileName string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		grip.Warning(os.Remove(fileName))
+		grip.Warning(ctx, os.Remove(fileName))
 		return errors.Errorf("received status code %d (%s) for request to URL '%s'", resp.StatusCode, resp.Status, url)
 	}
 
 	n, err := io.Copy(output, resp.Body)
 	if err != nil {
-		grip.Warning(os.Remove(fileName))
+		grip.Warning(ctx, os.Remove(fileName))
 		return errors.Wrapf(err, "writing URL '%s' to file '%s'", url, fileName)
 	}
 
-	grip.Debugf("%d bytes downloaded. (%s)", n, fileName)
+	grip.Debugf(ctx, "%d bytes downloaded. (%s)", n, fileName)
 	return nil
 }

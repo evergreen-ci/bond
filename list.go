@@ -1,6 +1,7 @@
 package bond
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/mongodb/grip"
@@ -16,7 +17,7 @@ type BuildTypes struct {
 
 func (b BuildTypes) String() string {
 	out, err := json.MarshalIndent(b, "   ", "   ")
-	grip.Error(err)
+	grip.Error(context.Background(), err)
 
 	return string(out) + "\n"
 }

@@ -35,12 +35,12 @@ func (s *DownloaderSuite) SetupSuite() {
 }
 
 func (s *DownloaderSuite) TearDownSuite() {
-	grip.Critical(os.RemoveAll(s.dir))
+	grip.Critical(context.Background(), os.RemoveAll(s.dir))
 }
 
 func (s *DownloaderSuite) TestCreateDirectory() {
 	// the s.dir location exists when we start
-	s.NoError(createDirectory(s.dir))
+	s.NoError(createDirectory(context.Background(), s.dir))
 }
 
 func (s *DownloaderSuite) TestCreateDirectoryThatDoesNotExist() {
@@ -48,7 +48,7 @@ func (s *DownloaderSuite) TestCreateDirectoryThatDoesNotExist() {
 	_, err := os.Stat(name)
 	s.True(os.IsNotExist(err))
 
-	s.NoError(createDirectory(name))
+	s.NoError(createDirectory(context.Background(), name))
 	_, err = os.Stat(name)
 	s.False(os.IsNotExist(err))
 }
@@ -67,7 +67,7 @@ func (s *DownloaderSuite) TestCreateDirectoryErrorsIfPathIsAFile() {
 	_, err = os.Stat(name)
 	s.False(os.IsNotExist(err))
 
-	s.Error(createDirectory(name))
+	s.Error(createDirectory(ctx, name))
 
 	_, err = os.Stat(name)
 	s.False(os.IsNotExist(err))
