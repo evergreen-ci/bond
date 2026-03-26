@@ -90,7 +90,7 @@ func (j *DownloadFileJob) Run(ctx context.Context) {
 
 	// in theory the queue should do this next check, but most do not
 	if state := j.Dependency().State(); state == dependency.Passed {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"file":    fn,
 			"message": "file is already downloaded",
 			"op":      "none",
@@ -103,7 +103,7 @@ func (j *DownloadFileJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"op":   "downloaded file complete",
 		"file": fn,
 	})
@@ -187,7 +187,7 @@ func extractArchive(fn string) error {
 		return errors.Errorf("file '%s' is in unsupported archive format", fn)
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(context.Background(), message.Fields{
 		"file": fn,
 		"op":   "extracted archive",
 	})
@@ -201,7 +201,7 @@ func attemptTimestampUpdate(fn string) {
 	// state if they fail.
 	now := time.Now()
 	if err := os.Chtimes(fn, now, now); err != nil {
-		grip.Debug(err)
+		grip.Debug(context.Background(), err)
 	}
 
 	// hopefully directory names in archives are the same are the
@@ -209,19 +209,19 @@ func attemptTimestampUpdate(fn string) {
 	// probably require a different archiver tool.
 	dirname := fn[0 : len(fn)-len(filepath.Ext(fn))]
 	if err := os.Chtimes(dirname, now, now); err != nil {
-		grip.Debug(err)
+		grip.Debug(context.Background(), err)
 	}
 }
 
 func (j *DownloadFileJob) handleError(err error) {
 	j.AddError(err)
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(context.Background(), message.WrapError(err, message.Fields{
 		"message": "problem downloading file",
 		"name":    j.FileName,
 		"op":      "cleaning up artifacts",
 	}))
-	grip.Warning(os.RemoveAll(j.getFileName())) // cleanup
+	grip.Warning(context.Background(), os.RemoveAll(j.getFileName())) // cleanup
 }
 
 func (j *DownloadFileJob) getFileName() string {

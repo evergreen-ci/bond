@@ -2,6 +2,7 @@ package bond
 
 import (
 	"bufio"
+	"context"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -27,7 +28,7 @@ import (
 func GetTargetDistro() string {
 	t, err := getDistro()
 	if err != nil {
-		grip.Warning(message.WrapError(err, "could not determine distro, falling back to a generic build"))
+		grip.Warning(context.Background(), message.WrapError(err, "could not determine distro, falling back to a generic build"))
 
 		if runtime.GOOS == "darwin" {
 			return "osx"
